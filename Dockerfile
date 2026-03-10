@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Install Python dependencies (layer cached unless pyproject.toml / uv.lock changes)
-COPY pyproject.toml uv.lock* ./
+COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Install Playwright Chromium browser

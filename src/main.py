@@ -54,33 +54,34 @@ async def main() -> None:
 
     # Rate limit: max 3 concurrent browser instances
     semaphore = asyncio.Semaphore(3)
+    success_count = 0
+    failure_count = 0
 
     async def scrape_with_limit(product):
+        nonlocal success_count, failure_count
         async with semaphore:
             try:
                 await run_scrape_pipeline(
                     product.id, str(product.url), product.site
                 )
+                success_count += 1
             except Exception as e:
                 logger.error(f"Unhandled error for product_id={product.id}: {e}")
+                failure_count += 1
             finally:
                 # Polite delay between scrapes (be a good citizen)
                 await asyncio.sleep(2)
 
-    tasks = [scrape_with_limit(p) for p in products]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    failures = [r for r in results if isinstance(r, Exception)]
-    successes = len(results) - len(failures)
+    await asyncio.gather(*[scrape_with_limit(p) for p in products])
 
     logger.info("=" * 60)
     logger.success(
-        f"Scrape run complete: {successes} succeeded, {len(failures)} failed"
+        f"Scrape run complete: {success_count} succeeded, {failure_count} failed"
     )
     logger.info("=" * 60)
 
     # Signal CI failure only if everything failed
-    if failures and successes == 0:
+    if failure_count > 0 and success_count == 0:
         logger.error("All scrapes failed!")
         sys.exit(1)
 

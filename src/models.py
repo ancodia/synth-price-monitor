@@ -5,7 +5,7 @@ Pydantic models enforce type safety at every boundary.
 from enum import Enum
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class StockStatus(str, Enum):
@@ -41,11 +41,7 @@ class PriceSnapshot(BaseModel):
     price: float
     currency: str = "GBP"
     stock_status: StockStatus
-    scraped_at: datetime = None
-
-    def model_post_init(self, __context) -> None:
-        if self.scraped_at is None:
-            object.__setattr__(self, "scraped_at", datetime.now())
+    scraped_at: datetime = Field(default_factory=datetime.now)
 
 
 class AlertConfig(BaseModel):

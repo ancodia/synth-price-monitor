@@ -165,7 +165,7 @@ async def run_scrape_pipeline(product_id: int, url: str, site: str) -> None:
             logger.info(f"Alert triggered: {reason}", product_id=product_id)
             product = db.get_product(product_id)
 
-            if last_snapshot and product:
+            if last_snapshot and product and last_snapshot.price > 0:
                 percent_drop = (
                     (last_snapshot.price - new_snapshot.price) / last_snapshot.price * 100
                 )

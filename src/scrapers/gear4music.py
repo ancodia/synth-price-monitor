@@ -4,62 +4,16 @@ Gear4Music scraper (www.gear4music.com).
 TODO: Before using, inspect the live product page and fill in the CSS selectors below.
       Open a product in DevTools → right-click price element → Copy selector.
 """
-import time
-from typing import Optional
+from playwright.async_api import Page
 
-from loguru import logger
-from playwright.async_api import async_playwright, Page
-from playwright_stealth import stealth_async
-
-from models import ScrapedProduct, StockStatus
+from models import StockStatus
 from .base import SiteScraper
 
 
 class Gear4MusicScraper(SiteScraper):
     """Scraper for Gear4Music product pages."""
 
-    async def scrape(self, url: str) -> Optional[ScrapedProduct]:
-        """Scrape a Gear4Music product page with performance monitoring."""
-        start_time = time.perf_counter()
-
-        try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
-                page = await browser.new_page()
-                await stealth_async(page)
-
-                await page.goto(url, wait_until="domcontentloaded")
-
-                price_text = await self._extract_price(page)
-                stock_status = await self._extract_stock(page)
-                name = await self._extract_name(page)
-
-                await browser.close()
-
-            duration = time.perf_counter() - start_time
-            logger.info(
-                f"Gear4Music scrape completed in {duration:.2f}s",
-                url=url,
-                duration=duration,
-            )
-
-            return ScrapedProduct(
-                name=name,
-                price=self._parse_price(price_text),
-                currency="GBP",
-                stock_status=stock_status,
-                url=url,
-                site="gear4music",
-            )
-
-        except Exception as e:
-            duration = time.perf_counter() - start_time
-            logger.error(
-                f"Gear4Music scrape failed after {duration:.2f}s: {e}",
-                url=url,
-                error=str(e),
-            )
-            raise
+    site_name = "gear4music"
 
     async def _extract_price(self, page: Page) -> str:
         # TODO: fill in CSS selector for the price element

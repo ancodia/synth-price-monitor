@@ -137,11 +137,35 @@ st.title("UK Synth Price Monitor")
 st.caption("Automated price tracking across UK music retailers")
 
 # ------------------------------------------------------------------
+# Cached data helpers (TTL=60s prevents DB hammering on every rerun)
+# ------------------------------------------------------------------
+
+@st.cache_data(ttl=60)
+def cached_get_products(_db):
+    return _db.get_all_active_products()
+
+
+@st.cache_data(ttl=60)
+def cached_get_best_deals(_db):
+    return get_best_deals()
+
+
+@st.cache_data(ttl=60)
+def cached_get_last_snapshot(_db, product_id):
+    return _db.get_last_snapshot(product_id)
+
+
+@st.cache_data(ttl=60)
+def cached_get_price_history(_db, product_id, days=30):
+    return _db.get_price_history(product_id, days=days)
+
+
+# ------------------------------------------------------------------
 # Summary metrics row
 # ------------------------------------------------------------------
 
-products = db.get_all_active_products()
-best_deals = get_best_deals()
+products = cached_get_products(db)
+best_deals = cached_get_best_deals(db)
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -190,8 +214,8 @@ if show_only_in_stock:
         p
         for p in filtered_products
         if (
-            db.get_last_snapshot(p.id) is not None
-            and db.get_last_snapshot(p.id).stock_status == StockStatus.IN_STOCK
+            (snap := cached_get_last_snapshot(db, p.id)) is not None
+            and snap.stock_status == StockStatus.IN_STOCK
         )
     ]
 
@@ -204,8 +228,8 @@ if sort_by == "Biggest recent drop":
 elif sort_by == "Lowest price":
     filtered_products.sort(
         key=lambda p: (
-            db.get_last_snapshot(p.id).price
-            if db.get_last_snapshot(p.id)
+            snap.price
+            if (snap := cached_get_last_snapshot(db, p.id))
             else float("inf")
         )
     )
@@ -225,7 +249,7 @@ for product in filtered_products:
         left_col, right_col = st.columns([3, 1])
 
         with left_col:
-            history = db.get_price_history(product.id, days=30)
+            history = cached_get_price_history(db, product.id, days=30)
 
             if history and len(history) > 1:
                 fig = go.Figure()
@@ -314,7 +338,7 @@ for product in filtered_products:
                 st.success("Saved!")
 
             if st.button("Test Alert", key=f"test_{product.id}"):
-                latest = db.get_last_snapshot(product.id)
+                latest = cached_get_last_snapshot(db, product.id)
                 if latest:
                     from notifications import send_slack_alert
 

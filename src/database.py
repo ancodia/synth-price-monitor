@@ -20,6 +20,16 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         self._init_schema()
 
+    def close(self) -> None:
+        """Explicitly close the database connection."""
+        self.conn.close()
+
+    def __enter__(self) -> "Database":
+        return self
+
+    def __exit__(self, *args) -> None:
+        self.close()
+
     def _init_schema(self) -> None:
         """Create tables if they don't exist."""
         self.conn.executescript("""

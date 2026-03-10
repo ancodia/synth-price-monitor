@@ -8,6 +8,7 @@ Supports:
 Both channels are optional: if credentials are not configured in .env,
 the notification is skipped with a warning rather than crashing the pipeline.
 """
+import html
 import os
 import smtplib
 from datetime import datetime
@@ -124,14 +125,18 @@ def send_email_alert(
         msg["From"] = email_from
         msg["To"] = email_to
 
-        html = f"""
+        # Escape user-controlled values before embedding in HTML
+        safe_name = html.escape(product_name)
+        safe_url = html.escape(product_url)
+
+        html_body = f"""
         <html>
           <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background-color: #4CAF50; color: white; padding: 20px; text-align: center;">
               <h2>Price Drop Alert!</h2>
             </div>
             <div style="padding: 20px; background-color: #f9f9f9;">
-              <h3 style="color: #333;">{product_name}</h3>
+              <h3 style="color: #333;">{safe_name}</h3>
               <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 10px 0;">
                 <p style="font-size: 14px; color: #666; margin: 5px 0;">Previous Price:</p>
                 <p style="font-size: 24px; color: #999; text-decoration: line-through; margin: 5px 0;">
@@ -148,7 +153,7 @@ def send_email_alert(
                 </p>
               </div>
               <div style="text-align: center; margin: 20px 0;">
-                <a href="{product_url}"
+                <a href="{safe_url}"
                    style="background-color: #4CAF50; color: white; padding: 12px 30px;
                           text-decoration: none; border-radius: 5px; display: inline-block;">
                   View Product
@@ -162,9 +167,9 @@ def send_email_alert(
         </html>
         """
 
-        msg.attach(MIMEText(html, "html"))
+        msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP_SSL(smtp_host, int(smtp_port)) as server:
+        with smtplib.SMTP_SSL(smtp_host, int(smtp_port), timeout=15) as server:
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
 
