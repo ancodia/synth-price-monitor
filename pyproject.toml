@@ -1,0 +1,28 @@
+[project]
+name = "synth-price-monitor"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    # Web scraping
+    "playwright>=1.40.0",
+    "playwright-stealth>=1.0.6",
+    # Data validation
+    "pydantic>=2.0.0",
+    # Dashboard & visualisation
+    "streamlit>=1.30.0",
+    "plotly>=5.18.0",
+    # Logging
+    "loguru>=0.7.2",
+    # Retry logic
+    "tenacity>=8.2.3",
+    # HTTP (Slack notifications)
+    "requests>=2.31.0",
+    # Sample data generation
+    "numpy>=1.26.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+]

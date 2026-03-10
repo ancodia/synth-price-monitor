@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # Streamlit dashboard — always running
+  dashboard:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./price_monitor.db:/app/price_monitor.db
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: streamlit run dashboard/app.py --server.port=8501 --server.address=0.0.0.0
+
+  # Scraper — manual run only (use: docker-compose --profile manual run --rm scraper)
+  scraper:
+    build: .
+    volumes:
+      - ./price_monitor.db:/app/price_monitor.db
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    command: python src/main.py
+    profiles:
+      - manual
