@@ -369,22 +369,27 @@ for group in product_groups:
             title = f"🎹 {group['group_name']} — {len(group['products'])} sites tracked"
     
     with st.expander(title, expanded=False):
-        # If multiple sites, show comparison table first
+        # If multiple sites, show comparison table and combined chart
         if len(group['products']) > 1:
             st.subheader("Price Comparison")
             
             if site_prices:
-                # Sort by price
+                # Sort by price (ascending - cheapest first)
                 site_prices.sort(key=lambda x: x['price'])
                 
-                comparison_cols = st.columns([2, 1, 1, 1])
+                comparison_cols = st.columns([2, 1, 1, 1, 1, 1])
                 comparison_cols[0].markdown("**Retailer**")
                 comparison_cols[1].markdown("**Price**")
                 comparison_cols[2].markdown("**Stock**")
-                comparison_cols[3].markdown("")
+                comparison_cols[3].markdown("**Alert %**")
+                comparison_cols[4].markdown("**Stock Alert**")
+                comparison_cols[5].markdown("")
+                
+                # Track if any settings changed
+                settings_to_save = []
                 
                 for site_info in site_prices:
-                    ccol1, ccol2, ccol3, ccol4 = st.columns([2, 1, 1, 1])
+                    ccol1, ccol2, ccol3, ccol4, ccol5, ccol6 = st.columns([2, 1, 1, 1, 1, 1])
                     
                     with ccol1:
                         st.markdown(f'<span class="site-badge">{site_info["site"].title()}</span>', unsafe_allow_html=True)
@@ -404,8 +409,36 @@ for group in product_groups:
                         else:
                             st.markdown('<span class="danger-badge">Out of Stock</span>', unsafe_allow_html=True)
                     
+                    # Alert settings inline
+                    config = db.get_alert_config(site_info['product'].id)
+                    
                     with ccol4:
-                        st.link_button("View", str(site_info['product'].url))
+                        threshold = st.number_input(
+                            "Threshold",
+                            min_value=1.0,
+                            max_value=20.0,
+                            value=config.threshold_percent if config else 5.0,
+                            step=0.5,
+                            key=f"threshold_{site_info['product'].id}",
+                            label_visibility="collapsed"
+                        )
+                    
+                    with ccol5:
+                        alert_stock = st.checkbox(
+                            "Stock alert",
+                            value=config.alert_on_stock_change if config else True,
+                            key=f"stock_alert_{site_info['product'].id}",
+                            label_visibility="collapsed"
+                        )
+                    
+                    with ccol6:
+                        col_a, col_b = st.columns(2)
+                        with col_a:
+                            if st.button("💾", key=f"save_{site_info['product'].id}", help="Save alert settings"):
+                                db.update_alert_config(site_info['product'].id, threshold, alert_stock)
+                                st.success("Saved!")
+                        with col_b:
+                            st.link_button("🔗", str(site_info['product'].url), help="View product")
                 
                 # Calculate savings
                 if len(site_prices) >= 2:
@@ -416,12 +449,68 @@ for group in product_groups:
                 st.info("All variants are currently out of stock")
             
             st.divider()
-        
-        # Show detailed history for each site
-        for product in group['products']:
-            if len(group['products']) > 1:
-                st.markdown(f"### {product.site.title()}")
             
+            # Combined chart showing all sites
+            st.subheader("Price History (All Sites)")
+            
+            # Collect history for all products in the group
+            fig = go.Figure()
+            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+            
+            for idx, product in enumerate(group['products']):
+                history = cached_get_price_history(db, product.id, days=30)
+                if history and len(history) > 1:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[h.scraped_at for h in history],
+                            y=[h.price for h in history],
+                            mode="lines+markers",
+                            name=product.site.title(),
+                            line=dict(color=colors[idx % len(colors)], width=2),
+                            marker=dict(size=6),
+                            hovertemplate=f"{product.site.title()}<br>£%{{y:.2f}}<br>%{{x}}<extra></extra>",
+                        )
+                    )
+            
+            if fig.data:
+                fig.update_layout(
+                    xaxis_title="Date",
+                    yaxis_title="Price (£)",
+                    height=400,
+                    hovermode="x unified",
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    )
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Not enough data for a chart yet. Check back after the next scrape.")
+            
+            st.divider()
+            
+            # Delete buttons for each site variant
+            st.subheader("Manage Retailers")
+            delete_cols = st.columns(len(group['products']))
+            for idx, product in enumerate(group['products']):
+                with delete_cols[idx]:
+                    st.write(f"**{product.site.title()}**")
+                    if st.button("🗑️ Delete", key=f"del_{product.id}", type="secondary"):
+                        if st.session_state.get(f"confirm_del_{product.id}", False):
+                            db.delete_product(product.id)
+                            st.success("Deleted!")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.session_state[f"confirm_del_{product.id}"] = True
+                            st.warning("Click again to confirm")
+        
+        # Single-site product - show individual chart and settings
+        else:
+            product = group['products'][0]
             left_col, right_col = st.columns([3, 1])
 
             with left_col:
@@ -544,10 +633,6 @@ for group in product_groups:
                     st.caption(
                         f"Last alert: {config.last_alert_sent.strftime('%Y-%m-%d %H:%M')}"
                     )
-            
-            # Add separator between products in multi-site group
-            if len(group['products']) > 1 and product != group['products'][-1]:
-                st.divider()
 
 # ------------------------------------------------------------------
 # Best deals section
