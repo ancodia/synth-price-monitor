@@ -50,8 +50,7 @@ class SiteScraper(ABC):
 
         try:
             async with Stealth().use_async(async_playwright()) as p:
-                # browser = await p.chromium.launch(headless=True)
-                browser = await p.chromium.launch(headless=False)
+                browser = await p.chromium.launch(headless=True)
                 try:
                     page = await browser.new_page()
                     await page.goto(url, wait_until="domcontentloaded")
