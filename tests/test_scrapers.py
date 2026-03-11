@@ -25,6 +25,9 @@ class ConcreteScraper(SiteScraper):
     """Minimal concrete subclass to exercise base-class methods without a browser."""
     site_name = "test"
 
+    async def _handle_cookie_consent(self, page):
+        pass  
+
     async def _extract_price(self, page) -> str:
         return ""
 
