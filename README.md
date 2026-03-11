@@ -17,6 +17,9 @@ Multi-site price monitoring system that tracks synthesizer prices across UK reta
 - Performance monitoring and structured logging
 - Smart alerting with threshold-based triggers and spam prevention
 - Fully automated via GitHub Actions
+- **User-controlled product grouping** - manual naming with autocomplete for multi-site comparison
+- **Combined price charts** - visual comparison of all retailers on a single chart
+- **Inline alert configuration** - adjust settings directly in the comparison table
 
 ## Architecture
 
@@ -43,12 +46,16 @@ graph TB
 
 ### Core Functionality
 - **Multi-site scraping**: Monitors Thomann, Gear4Music, Juno Records
+- **User-controlled grouping**: Name products manually, autocomplete suggests existing names
 - **Price history**: 30-day trend tracking with visualisation
+- **Combined charts**: Multi-site products show all retailers on a single chart for easy comparison
+- **Inline alert settings**: Configure thresholds and stock alerts directly in the comparison table
 - **Smart alerts**: Configurable threshold-based notifications (default: 5% drop)
 - **Slack integration**: Rich Block Kit messages with direct product links
 - **Email notifications**: HTML alerts with savings calculations
-- **Web dashboard**: Add/manage products via Streamlit UI
+- **Web dashboard**: Add/manage products via Streamlit UI with automatic refresh
 - **Automated scraping**: Daily GitHub Actions runs with zero infrastructure cost
+- **Smart reactivation**: Re-adding deleted products restores them with full price history
 
 ### Production Engineering Features
 - **Idempotency Protection**: Prevents duplicate price snapshots when data hasn't changed
@@ -58,6 +65,7 @@ graph TB
 - **Structured Logging**: Full observability with contextual logs (product_id, site, errors)
 - **Graceful Degradation**: Single product failures don't crash the entire pipeline
 - **Retry Logic**: Exponential backoff (3 attempts) for transient failures
+- **Soft Delete**: Products can be reactivated with full price history intact
 
 ## Quick Start
 
@@ -112,6 +120,69 @@ uv run python src/main.py
 uv run streamlit run dashboard/app.py
 ```
 
+## Using the Dashboard
+
+### Adding Products
+
+The dashboard uses a manual naming system with autocomplete for reliable product grouping:
+
+1. **First Product**:
+   - Paste product URL (e.g., `https://www.thomann.co.uk/gb/roland_tr8s.htm`)
+   - Select "➕ Add new product name..." from dropdown
+   - Enter a name (e.g., "Roland TR-8S")
+   - Click "Add Product"
+
+2. **Same Product from Another Retailer**:
+   - Paste second URL (e.g., `https://www.gear4music.com/roland-tr8s`)
+   - Select "Roland TR-8S" from dropdown (autocomplete)
+   - Click "Add Product"
+
+3. **Automatic Grouping**:
+   - Products with identical names are grouped together
+   - Shows combined price comparison table
+   - Single chart with all retailers overlaid
+   - Inline alert settings per retailer
+
+### Multi-Site Product View
+
+When multiple retailers are tracked for the same product:
+
+**Price Comparison Table**:
+- All retailers listed with current price and stock status
+- Best price highlighted with 🏆
+- Alert threshold % and stock alert toggle inline
+- 💾 Save button to update settings per retailer
+- 🔗 Link to product page
+
+**Combined Price Chart**:
+- All retailers on a single chart (color-coded)
+- Visual comparison of price trends over 30 days
+- Interactive hover shows all prices simultaneously
+- Identify which retailer has better pricing patterns
+
+**Manage Retailers**:
+- Delete individual retailers while keeping others
+- Soft delete - re-adding restores full price history
+
+### Single-Site Product View
+
+Products tracked on one site get the classic layout:
+- Price history chart on the left
+- Alert settings panel on the right
+- Delete button
+
+### Alert Configuration
+
+Configure per product per retailer:
+- **Alert Threshold**: Percentage price drop required (default: 5%)
+- **Stock Alerts**: Get notified when out-of-stock items return
+
+### Smart Features
+
+- **Automatic UI Refresh**: Dashboard updates immediately after adding/deleting products
+- **Smart Reactivation**: Deleted products can be restored with full history by re-adding the URL
+- **Duplicate Prevention**: Can't add the same URL twice while active
+
 ## Configuration
 
 ### Environment Variables
@@ -130,14 +201,6 @@ EMAIL_TO=recipient@example.com
 # Slack (optional)
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 ```
-
-### Adding Products
-
-1. Open dashboard at http://localhost:8501
-2. Paste a product URL from a supported retailer in the sidebar
-3. Click "Add Product" — the system scrapes details automatically
-4. Configure alert threshold (default: 5% price drop)
-5. Enable/disable stock change alerts
 
 ### Adding a New Retailer
 
@@ -164,6 +227,18 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 
 *This pattern is intentional for portfolio demonstration.*
 
+### Manual Product Naming
+
+**Design Decision**: Users manually name products rather than auto-normalization.
+
+**Benefits**:
+- **Reliable**: No flaky regex patterns or heuristics
+- **Flexible**: Group any products you want (even different models for comparison)
+- **Autocomplete**: Dropdown suggests existing names to prevent typos
+- **Transparent**: User controls exactly how products are grouped
+
+**Alternative Considered**: Automatic name normalization was tested but proved unreliable across diverse product naming conventions.
+
 ### Site Registry Pattern
 
 Scrapers are registered in a central registry rather than hardcoded detection:
@@ -177,11 +252,28 @@ SITE_REGISTRY = {
 
 **Benefit**: Adding new sites requires only creating a scraper class and registering it — zero pipeline changes.
 
-### Cross-Site Product Matching
+### Soft Delete Pattern
 
-Current implementation matches products by exact name equality.
+Products are soft-deleted (marked inactive) rather than hard-deleted.
 
-**Production Consideration**: For real inventory, use fuzzy matching (e.g., `RapidFuzz`) to handle naming variations across retailers.
+**Benefits**:
+- Preserves price history if product is re-added
+- Prevents UNIQUE constraint errors on URL
+- Enables "undo" by re-adding the same URL
+- Historical data available for analysis
+
+**Implementation**: Re-adding a deleted URL reactivates the product with all snapshots intact.
+
+### Combined vs Individual Charts
+
+**Multi-site products**: Single chart with all retailers overlaid
+- Easier visual comparison
+- Identify pricing patterns across retailers
+- Less scrolling
+
+**Single-site products**: Individual chart
+- Traditional focused view
+- Alert settings in sidebar
 
 ## Running Tests
 
@@ -202,9 +294,9 @@ synth-price-monitor/
 │   ├── scrapers/
 │   │   ├── base.py             # Abstract scraper interface + price parser
 │   │   ├── registry.py         # Site registry pattern
-│   │   ├── thomann.py          # Thomann implementation (TODO: selectors)
-│   │   ├── gear4music.py       # Gear4Music implementation (TODO: selectors)
-│   │   └── juno.py             # Juno stub (TODO: implement)
+│   │   ├── thomann.py          # Thomann implementation
+│   │   ├── gear4music.py       # Gear4Music implementation
+│   │   └── juno.py             # Juno implementation
 │   ├── models.py               # Pydantic data models
 │   ├── database.py             # SQLite operations
 │   ├── notifications.py        # Slack + Email alerts
@@ -236,7 +328,7 @@ synth-price-monitor/
 2024-02-14 06:00:17 | INFO     | Thomann scrape completed in 1.89s
 2024-02-14 06:00:17 | INFO     | Validated snapshot | product_id=1 | price=589.00 | stock=in_stock
 2024-02-14 06:00:17 | INFO     | Alert triggered: Price dropped 5.2%
-2024-02-14 06:00:18 | SUCCESS  | Slack notification sent for Korg Minilogue XD
+2024-02-14 06:00:18 | SUCCESS  | Slack notification sent for Roland TR-8S
 2024-02-14 06:00:18 | SUCCESS  | Pipeline completed | product_id=1 | snapshot_id=47
 ```
 
@@ -257,10 +349,11 @@ Logs are written to `stdout` (INFO+) for GitHub Actions and to `logs/scraper_YYY
 
 - [ ] Used/B-stock tracking
 - [ ] FastAPI endpoint for external integrations
-- [ ] Fuzzy product matching with RapidFuzz
 - [ ] Multi-currency support (EUR, USD conversion)
 - [ ] Telegram bot notifications
 - [ ] Price prediction with historical trend analysis
+- [ ] Export price history to CSV
+- [ ] Custom alert schedules (e.g., only notify during business hours)
 
 ## Portfolio Positioning
 
@@ -271,8 +364,18 @@ The focus is on **systems thinking**:
 - How do we prevent bad data from corrupting our database?
 - How do we make systems observable and debuggable?
 - How do we design for maintainability and extensibility?
+- How do we create intuitive user experiences for complex multi-site comparisons?
 
 The scraping is the "what", but the engineering patterns are the "why" — and what makes this portfolio-worthy.
+
+### Key Differentiators vs. Simple Scrapers
+
+1. **User Experience**: Manual naming with autocomplete, combined charts, inline settings
+2. **Production Resilience**: Circuit breakers, idempotency, graceful degradation
+3. **Data Quality**: Pydantic validation at every boundary
+4. **Observability**: Structured logging, performance monitoring
+5. **Smart Features**: Soft delete with reactivation, automatic UI refresh
+6. **Extensibility**: Site registry pattern makes adding retailers trivial
 
 ## License
 
