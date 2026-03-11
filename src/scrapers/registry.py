@@ -15,7 +15,7 @@ from .juno import JunoScraper
 
 
 SITE_REGISTRY: Dict[str, Type[SiteScraper]] = {
-    "thomann.de": ThomannScraper,
+    "thomann.co.uk": ThomannScraper,
     "gear4music.com": Gear4MusicScraper,
     "juno.co.uk": JunoScraper,
 }

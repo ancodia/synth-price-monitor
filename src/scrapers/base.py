@@ -17,7 +17,7 @@ from typing import Optional
 
 from loguru import logger
 from playwright.async_api import async_playwright, Page
-from playwright_stealth import stealth_async
+from playwright_stealth import Stealth
 
 from models import ScrapedProduct, StockStatus
 
@@ -49,13 +49,14 @@ class SiteScraper(ABC):
         start_time = time.perf_counter()
 
         try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
+            async with Stealth().use_async(async_playwright()) as p:
+                # browser = await p.chromium.launch(headless=True)
+                browser = await p.chromium.launch(headless=False)
                 try:
                     page = await browser.new_page()
-                    await stealth_async(page)
                     await page.goto(url, wait_until="domcontentloaded")
 
+                    await self._handle_cookie_consent(page)
                     price_text = await self._extract_price(page)
                     stock_status = await self._extract_stock(page)
                     name = await self._extract_name(page)
@@ -87,6 +88,11 @@ class SiteScraper(ABC):
                 error=str(e),
             )
             raise
+
+    @abstractmethod
+    async def _handle_cookie_consent(self, page: Page):
+        """Handle cookie consent popups if they appear."""
+        ...
 
     @abstractmethod
     async def _extract_price(self, page: Page) -> str:

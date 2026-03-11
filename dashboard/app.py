@@ -86,7 +86,7 @@ with st.sidebar:
 
     product_url = st.text_input(
         "Product URL",
-        placeholder="https://www.thomann.de/gb/...",
+        placeholder="https://www.thomann.co.uk/gb/...",
         help="Supported: Thomann, Gear4Music, Juno Records",
     )
 
@@ -97,7 +97,7 @@ with st.sidebar:
             try:
                 get_scraper_for_url(product_url)  # validate domain first
                 # Extract a short site label from the domain
-                domain_part = product_url.split("/")[2]  # e.g. "www.thomann.de"
+                domain_part = product_url.split("/")[2]  # e.g. "www.thomann.co.uk"
                 site = domain_part.replace("www.", "").split(".")[0]  # "thomann"
 
                 with st.spinner("Fetching product details..."):

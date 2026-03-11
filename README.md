@@ -170,7 +170,7 @@ Scrapers are registered in a central registry rather than hardcoded detection:
 
 ```python
 SITE_REGISTRY = {
-    "thomann.de": ThomannScraper,
+    "thomann.co.uk": ThomannScraper,
     "gear4music.com": Gear4MusicScraper,
 }
 ```

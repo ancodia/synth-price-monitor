@@ -57,7 +57,7 @@ def generate_sample_data() -> None:
         (
             "Korg Minilogue XD",
             "thomann",
-            "https://www.thomann.de/gb/korg_minilogue_xd.htm",
+            "https://www.thomann.co.uk/gb/korg_minilogue_xd.htm",
             589.00,
         ),
         (
@@ -69,7 +69,7 @@ def generate_sample_data() -> None:
         (
             "Behringer DeepMind 12",
             "thomann",
-            "https://www.thomann.de/gb/behringer_deepmind12.htm",
+            "https://www.thomann.co.uk/gb/behringer_deepmind12.htm",
             725.00,
         ),
         (
@@ -81,7 +81,7 @@ def generate_sample_data() -> None:
         (
             "Arturia MiniFreak",
             "thomann",
-            "https://www.thomann.de/gb/arturia_minifreak.htm",
+            "https://www.thomann.co.uk/gb/arturia_minifreak.htm",
             539.00,
         ),
         (
@@ -93,7 +93,7 @@ def generate_sample_data() -> None:
         (
             "Moog Subsequent 37",
             "thomann",
-            "https://www.thomann.de/gb/moog_subsequent_37.htm",
+            "https://www.thomann.co.uk/gb/moog_subsequent_37.htm",
             1599.00,
         ),
     ]

@@ -281,7 +281,7 @@ def test_should_alert_zero_base_price_no_crash():
 def test_thomann_scraper_live():
     """
     TODO: After filling in thomann.py selectors, test with a real URL:
-        url = "https://www.thomann.de/gb/korg_minilogue_xd.htm"
+        url = "https://www.thomann.co.uk/gb/korg_minilogue_xd.htm"
     """
     pass
 

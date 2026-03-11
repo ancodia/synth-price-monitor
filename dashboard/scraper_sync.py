@@ -6,7 +6,7 @@ This module creates a fresh event loop per call to safely bridge the gap.
 
 Usage:
     from scraper_sync import scrape_product_sync
-    result = scrape_product_sync("https://www.thomann.de/...")
+    result = scrape_product_sync("https://www.thomann.co.uk/...")
 """
 import asyncio
 import sys

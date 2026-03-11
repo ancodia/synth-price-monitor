@@ -5,9 +5,6 @@
 # Remove this line if you want to commit the DB from local dev too
 # price_monitor.db
 
-# Logs
-logs/*.log
-
 # Python
 __pycache__/
 *.py[cod]
@@ -34,3 +31,13 @@ env/
 Thumbs.db
 
 .claude/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+price_monitor.db
+
+# Logs
+logs/
+*.log
