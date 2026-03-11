@@ -139,25 +139,50 @@ with st.sidebar:
                     product_data = scrape_product_sync(product_url)
 
                     if product_data:
-                        # Use user-provided name instead of scraped name
-                        product_id = db.add_product(
-                            name=product_name.strip(),
-                            site=site,
-                            url=product_url,
-                        )
+                        # Check if this URL already exists (possibly soft-deleted)
+                        existing = db.conn.execute(
+                            "SELECT id, is_active FROM products WHERE url = ?",
+                            (product_url,)
+                        ).fetchone()
+                        
+                        if existing and existing["is_active"]:
+                            # Product already exists and is active
+                            st.error("This URL is already being tracked")
+                        else:
+                            if existing and not existing["is_active"]:
+                                # Reactivate soft-deleted product
+                                product_id = existing["id"]
+                                db.conn.execute(
+                                    "UPDATE products SET is_active = 1, name = ? WHERE id = ?",
+                                    (product_name.strip(), product_id)
+                                )
+                                db.conn.commit()
+                                st.success(f"Reactivated: {product_name}")
+                            else:
+                                # New product - insert normally
+                                product_id = db.add_product(
+                                    name=product_name.strip(),
+                                    site=site,
+                                    url=product_url,
+                                )
+                                st.success(f"Added: {product_name}")
 
-                        snapshot = PriceSnapshot(
-                            product_id=product_id,
-                            price=product_data.price,
-                            currency=product_data.currency,
-                            stock_status=product_data.stock_status,
-                        )
-                        db.insert_snapshot(snapshot)
-                        db.add_alert_config(product_id, threshold_percent=5.0)
+                            # Add new snapshot regardless of whether reactivated or new
+                            snapshot = PriceSnapshot(
+                                product_id=product_id,
+                                price=product_data.price,
+                                currency=product_data.currency,
+                                stock_status=product_data.stock_status,
+                            )
+                            db.insert_snapshot(snapshot)
+                            
+                            # Ensure alert config exists
+                            existing_config = db.get_alert_config(product_id)
+                            if not existing_config:
+                                db.add_alert_config(product_id, threshold_percent=5.0)
 
-                        st.success(f"Added: {product_name}")
-                        st.cache_data.clear()  # Clear cache to show new product immediately
-                        st.rerun()
+                            st.cache_data.clear()  # Clear cache to show new product immediately
+                            st.rerun()
                     else:
                         st.error("Failed to extract product details")
 
