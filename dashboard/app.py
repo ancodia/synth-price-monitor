@@ -156,6 +156,7 @@ with st.sidebar:
                         db.add_alert_config(product_id, threshold_percent=5.0)
 
                         st.success(f"Added: {product_name}")
+                        st.cache_data.clear()  # Clear cache to show new product immediately
                         st.rerun()
                     else:
                         st.error("Failed to extract product details")
@@ -508,6 +509,7 @@ for group in product_groups:
                     if st.session_state.get(f"confirm_del_{product.id}", False):
                         db.delete_product(product.id)
                         st.success("Deleted!")
+                        st.cache_data.clear()  # Clear cache to update product list immediately
                         st.rerun()
                     else:
                         st.session_state[f"confirm_del_{product.id}"] = True
