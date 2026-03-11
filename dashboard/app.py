@@ -63,6 +63,15 @@ st.markdown(
         border-radius: 3px;
         display: inline-block;
     }
+    .site-badge {
+        background-color: #e7f3ff;
+        color: #004085;
+        padding: 3px 8px;
+        border-radius: 3px;
+        font-size: 0.85em;
+        display: inline-block;
+        margin-right: 5px;
+    }
 </style>
 """,
     unsafe_allow_html=True,
@@ -89,10 +98,36 @@ with st.sidebar:
         placeholder="https://www.thomann.co.uk/gb/...",
         help="Supported: Thomann, Gear4Music, Juno Records",
     )
+    
+    # Get unique existing product names for suggestions
+    all_products = db.get_all_active_products()
+    existing_names = sorted(set(p.name for p in all_products))
+    
+    # Dropdown with existing names + option to add new
+    name_options = ["➕ Add new product name..."] + existing_names
+    
+    selected_option = st.selectbox(
+        "Product Name",
+        options=name_options,
+        help="Select an existing product to add another retailer, or create a new product group",
+    )
+    
+    # Show text input only if "Add new" is selected
+    if selected_option == "➕ Add new product name...":
+        product_name = st.text_input(
+            "Enter new product name",
+            placeholder="e.g., Roland TR-8S",
+            help="This name will be used to group variants across retailers",
+        )
+    else:
+        product_name = selected_option
+        st.info(f"Adding another retailer for: **{product_name}**")
 
     if st.button("Add Product", type="primary"):
         if not product_url:
             st.error("Please enter a URL")
+        elif not product_name:
+            st.error("Please enter a product name")
         else:
             try:
                 get_scraper_for_url(product_url)  # validate domain first
@@ -104,8 +139,9 @@ with st.sidebar:
                     product_data = scrape_product_sync(product_url)
 
                     if product_data:
+                        # Use user-provided name instead of scraped name
                         product_id = db.add_product(
-                            name=product_data.name,
+                            name=product_name.strip(),
                             site=site,
                             url=product_url,
                         )
@@ -119,7 +155,7 @@ with st.sidebar:
                         db.insert_snapshot(snapshot)
                         db.add_alert_config(product_id, threshold_percent=5.0)
 
-                        st.success(f"Added: {product_data.name}")
+                        st.success(f"Added: {product_name}")
                         st.rerun()
                     else:
                         st.error("Failed to extract product details")
@@ -185,6 +221,35 @@ with col4:
 st.divider()
 
 # ------------------------------------------------------------------
+# Product grouping helper
+# ------------------------------------------------------------------
+
+def group_products(product_list):
+    """
+    Group products by exact name match (user-provided names).
+    
+    Returns:
+        List of dicts with 'group_name' and 'products' (list)
+    """
+    groups = {}
+    
+    for product in product_list:
+        # Use exact name as grouping key
+        group_key = product.name.strip()
+        
+        if group_key not in groups:
+            groups[group_key] = {
+                'group_name': group_key,
+                'products': []
+            }
+        
+        groups[group_key]['products'].append(product)
+    
+    # Sort groups by name
+    return sorted(groups.values(), key=lambda g: g['group_name'])
+
+
+# ------------------------------------------------------------------
 # Filters
 # ------------------------------------------------------------------
 
@@ -238,135 +303,224 @@ elif sort_by == "Newest":
 else:
     filtered_products.sort(key=lambda p: p.name)
 
-st.caption(f"Showing {len(filtered_products)} of {len(products)} products")
+# Group products by normalized name
+product_groups = group_products(filtered_products)
+
+st.caption(f"Showing {len(filtered_products)} products in {len(product_groups)} groups")
 
 # ------------------------------------------------------------------
-# Product list
+# Product list (grouped by product)
 # ------------------------------------------------------------------
 
-for product in filtered_products:
-    with st.expander(f"🎹 {product.name} — {product.site.title()}", expanded=False):
-        left_col, right_col = st.columns([3, 1])
-
-        with left_col:
-            history = cached_get_price_history(db, product.id, days=30)
-
-            if history and len(history) > 1:
-                fig = go.Figure()
-                fig.add_trace(
-                    go.Scatter(
-                        x=[h.scraped_at for h in history],
-                        y=[h.price for h in history],
-                        mode="lines+markers",
-                        name=product.site.title(),
-                        line=dict(color="#1f77b4", width=2),
-                        marker=dict(size=8, color="#1f77b4"),
-                        hovertemplate="£%{y:.2f}<br>%{x}<extra></extra>",
-                    )
-                )
-                fig.update_layout(
-                    title="30-Day Price History",
-                    xaxis_title="Date",
-                    yaxis_title="Price (£)",
-                    height=300,
-                    hovermode="x unified",
-                    showlegend=False,
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-                latest = history[-1]
-
-                if latest.stock_status == StockStatus.IN_STOCK:
-                    st.markdown(
-                        f'<div class="success-badge">In Stock — £{latest.price:.2f}</div>',
-                        unsafe_allow_html=True,
-                    )
-                elif latest.stock_status == StockStatus.LOW_STOCK:
-                    st.markdown(
-                        f'<div class="warning-badge">Low Stock — £{latest.price:.2f}</div>',
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        '<div class="danger-badge">Out of Stock</div>',
-                        unsafe_allow_html=True,
-                    )
-
-                if len(history) >= 2:
-                    price_change = history[-1].price - history[-2].price
-                    if abs(price_change) > 0.01:
-                        change_pct = price_change / history[-2].price * 100
-                        if price_change < 0:
-                            st.success(
-                                f"Price dropped £{abs(price_change):.2f} "
-                                f"({abs(change_pct):.1f}%) since last check"
-                            )
+for group in product_groups:
+    # Determine the best price across all sites in this group
+    site_prices = []
+    for product in group['products']:
+        latest = cached_get_last_snapshot(db, product.id)
+        if latest and latest.stock_status == StockStatus.IN_STOCK:
+            site_prices.append({
+                'site': product.site,
+                'price': latest.price,
+                'product': product,
+                'snapshot': latest
+            })
+    
+    # Build the expander title with price info
+    if len(group['products']) == 1:
+        # Single site - show simple title
+        product = group['products'][0]
+        latest = cached_get_last_snapshot(db, product.id)
+        if latest:
+            title = f"🎹 {product.name} — £{latest.price:.2f} ({product.site.title()})"
+        else:
+            title = f"🎹 {product.name} — {product.site.title()}"
+    else:
+        # Multi-site - show best price
+        if site_prices:
+            best_price = min(p['price'] for p in site_prices)
+            title = f"🎹 {group['group_name']} — from £{best_price:.2f} ({len(site_prices)} sites)"
+        else:
+            title = f"🎹 {group['group_name']} — {len(group['products'])} sites tracked"
+    
+    with st.expander(title, expanded=False):
+        # If multiple sites, show comparison table first
+        if len(group['products']) > 1:
+            st.subheader("Price Comparison")
+            
+            if site_prices:
+                # Sort by price
+                site_prices.sort(key=lambda x: x['price'])
+                
+                comparison_cols = st.columns([2, 1, 1, 1])
+                comparison_cols[0].markdown("**Retailer**")
+                comparison_cols[1].markdown("**Price**")
+                comparison_cols[2].markdown("**Stock**")
+                comparison_cols[3].markdown("")
+                
+                for site_info in site_prices:
+                    ccol1, ccol2, ccol3, ccol4 = st.columns([2, 1, 1, 1])
+                    
+                    with ccol1:
+                        st.markdown(f'<span class="site-badge">{site_info["site"].title()}</span>', unsafe_allow_html=True)
+                    
+                    with ccol2:
+                        # Highlight best price
+                        if site_info['price'] == site_prices[0]['price']:
+                            st.markdown(f"**£{site_info['price']:.2f}** 🏆")
                         else:
-                            st.warning(
-                                f"Price increased £{price_change:.2f} "
-                                f"({change_pct:.1f}%) since last check"
-                            )
+                            st.write(f"£{site_info['price']:.2f}")
+                    
+                    with ccol3:
+                        if site_info['snapshot'].stock_status == StockStatus.IN_STOCK:
+                            st.markdown('<span class="success-badge">In Stock</span>', unsafe_allow_html=True)
+                        elif site_info['snapshot'].stock_status == StockStatus.LOW_STOCK:
+                            st.markdown('<span class="warning-badge">Low Stock</span>', unsafe_allow_html=True)
+                        else:
+                            st.markdown('<span class="danger-badge">Out of Stock</span>', unsafe_allow_html=True)
+                    
+                    with ccol4:
+                        st.link_button("View", str(site_info['product'].url))
+                
+                # Calculate savings
+                if len(site_prices) >= 2:
+                    savings = site_prices[-1]['price'] - site_prices[0]['price']
+                    if savings > 0:
+                        st.success(f"💰 Save £{savings:.2f} by choosing {site_prices[0]['site'].title()} over {site_prices[-1]['site'].title()}")
             else:
-                st.info(
-                    "Not enough data for a chart yet. Check back after the next scrape."
-                )
-
-        with right_col:
-            st.link_button("View Product", str(product.url))
-
-            st.subheader("Alert Settings")
-            config = db.get_alert_config(product.id)
-
-            threshold = st.slider(
-                "Drop threshold (%)",
-                min_value=1.0,
-                max_value=20.0,
-                value=config.threshold_percent if config else 5.0,
-                step=0.5,
-                key=f"threshold_{product.id}",
-                help="Send alert when price drops by this percentage",
-            )
-
-            alert_stock = st.checkbox(
-                "Alert on back-in-stock",
-                value=config.alert_on_stock_change if config else True,
-                key=f"stock_{product.id}",
-            )
-
-            if st.button("Save Settings", key=f"save_{product.id}"):
-                db.update_alert_config(product.id, threshold, alert_stock)
-                st.success("Saved!")
-
-            if st.button("Test Alert", key=f"test_{product.id}"):
-                latest = cached_get_last_snapshot(db, product.id)
-                if latest:
-                    from notifications import send_slack_alert
-
-                    send_slack_alert(
-                        product.name,
-                        latest.price * 1.1,
-                        latest.price,
-                        10.0,
-                        str(product.url),
-                        product.site,
-                    )
-                    st.success("Test alert sent to Slack!")
-
+                st.info("All variants are currently out of stock")
+            
             st.divider()
+        
+        # Show detailed history for each site
+        for product in group['products']:
+            if len(group['products']) > 1:
+                st.markdown(f"### {product.site.title()}")
+            
+            left_col, right_col = st.columns([3, 1])
 
-            if st.button("Delete", key=f"del_{product.id}", type="secondary"):
-                if st.session_state.get(f"confirm_del_{product.id}", False):
-                    db.delete_product(product.id)
-                    st.success("Deleted!")
-                    st.rerun()
+            with left_col:
+                history = cached_get_price_history(db, product.id, days=30)
+
+                if history and len(history) > 1:
+                    fig = go.Figure()
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[h.scraped_at for h in history],
+                            y=[h.price for h in history],
+                            mode="lines+markers",
+                            name=product.site.title(),
+                            line=dict(width=2),
+                            marker=dict(size=8),
+                            hovertemplate="£%{y:.2f}<br>%{x}<extra></extra>",
+                        )
+                    )
+                    fig.update_layout(
+                        title=f"30-Day Price History — {product.site.title()}",
+                        xaxis_title="Date",
+                        yaxis_title="Price (£)",
+                        height=300,
+                        hovermode="x unified",
+                        showlegend=False,
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    latest = history[-1]
+
+                    if latest.stock_status == StockStatus.IN_STOCK:
+                        st.markdown(
+                            f'<div class="success-badge">In Stock — £{latest.price:.2f}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    elif latest.stock_status == StockStatus.LOW_STOCK:
+                        st.markdown(
+                            f'<div class="warning-badge">Low Stock — £{latest.price:.2f}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown(
+                            '<div class="danger-badge">Out of Stock</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    if len(history) >= 2:
+                        price_change = history[-1].price - history[-2].price
+                        if abs(price_change) > 0.01:
+                            change_pct = price_change / history[-2].price * 100
+                            if price_change < 0:
+                                st.success(
+                                    f"Price dropped £{abs(price_change):.2f} "
+                                    f"({abs(change_pct):.1f}%) since last check"
+                                )
+                            else:
+                                st.warning(
+                                    f"Price increased £{price_change:.2f} "
+                                    f"({change_pct:.1f}%) since last check"
+                                )
                 else:
-                    st.session_state[f"confirm_del_{product.id}"] = True
-                    st.warning("Click again to confirm deletion")
+                    st.info(
+                        "Not enough data for a chart yet. Check back after the next scrape."
+                    )
 
-            if config and config.last_alert_sent:
-                st.caption(
-                    f"Last alert: {config.last_alert_sent.strftime('%Y-%m-%d %H:%M')}"
+            with right_col:
+                st.link_button("View Product", str(product.url))
+
+                st.subheader("Alert Settings")
+                config = db.get_alert_config(product.id)
+
+                threshold = st.slider(
+                    "Drop threshold (%)",
+                    min_value=1.0,
+                    max_value=20.0,
+                    value=config.threshold_percent if config else 5.0,
+                    step=0.5,
+                    key=f"threshold_{product.id}",
+                    help="Send alert when price drops by this percentage",
                 )
+
+                alert_stock = st.checkbox(
+                    "Alert on back-in-stock",
+                    value=config.alert_on_stock_change if config else True,
+                    key=f"stock_{product.id}",
+                )
+
+                if st.button("Save Settings", key=f"save_{product.id}"):
+                    db.update_alert_config(product.id, threshold, alert_stock)
+                    st.success("Saved!")
+
+                if st.button("Test Alert", key=f"test_{product.id}"):
+                    latest = cached_get_last_snapshot(db, product.id)
+                    if latest:
+                        from notifications import send_slack_alert
+
+                        send_slack_alert(
+                            product.name,
+                            latest.price * 1.1,
+                            latest.price,
+                            10.0,
+                            str(product.url),
+                            product.site,
+                        )
+                        st.success("Test alert sent to Slack!")
+
+                st.divider()
+
+                if st.button("Delete", key=f"del_{product.id}", type="secondary"):
+                    if st.session_state.get(f"confirm_del_{product.id}", False):
+                        db.delete_product(product.id)
+                        st.success("Deleted!")
+                        st.rerun()
+                    else:
+                        st.session_state[f"confirm_del_{product.id}"] = True
+                        st.warning("Click again to confirm deletion")
+
+                if config and config.last_alert_sent:
+                    st.caption(
+                        f"Last alert: {config.last_alert_sent.strftime('%Y-%m-%d %H:%M')}"
+                    )
+            
+            # Add separator between products in multi-site group
+            if len(group['products']) > 1 and product != group['products'][-1]:
+                st.divider()
 
 # ------------------------------------------------------------------
 # Best deals section
