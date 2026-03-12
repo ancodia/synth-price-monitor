@@ -38,6 +38,9 @@ st.markdown(
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    .stMetric label, .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"] {
+        color: #111111 !important;
+    }
     .stButton>button {
         width: 100%;
         border-radius: 5px;
