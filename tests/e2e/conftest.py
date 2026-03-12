@@ -225,11 +225,18 @@ def browser_context_args():
 # Screenshot capture for HTML report
 # ------------------------------------------------------------------
 
+import base64
+
 try:
     from pytest_html import extras as html_extras
     _PYTEST_HTML = True
 except ImportError:
     _PYTEST_HTML = False
+
+
+def _png_extra(screenshot_bytes: bytes):
+    """Convert raw screenshot bytes to a pytest-html PNG extra (v4 requires base64 string)."""
+    return html_extras.png(base64.b64encode(screenshot_bytes).decode("utf-8"))
 
 
 @pytest.fixture
@@ -255,13 +262,13 @@ def pytest_runtest_makereport(item, call):
 
     # Element screenshots attached explicitly during the test
     for screenshot in getattr(item, "_element_screenshots", []):
-        extra.append(html_extras.png(screenshot))
+        extra.append(_png_extra(screenshot))
 
     # Full-page screenshot for visual context (every UI test)
     page = item.funcargs.get("page")
     if page is not None:
         try:
-            extra.append(html_extras.png(page.screenshot(full_page=False)))
+            extra.append(_png_extra(page.screenshot(full_page=False)))
         except Exception:
             pass
 
