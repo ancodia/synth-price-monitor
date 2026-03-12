@@ -32,6 +32,12 @@ Thumbs.db
 
 .claude/
 
+# Database files
+*.db
+*.db-shm
+*.db-wal
+price_monitor.db
+
 # Logs
 logs/
 *.log
