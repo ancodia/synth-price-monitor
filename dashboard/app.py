@@ -526,7 +526,7 @@ for group in product_groups:
                             f"💰 Save £{savings:.2f} by choosing {site_prices[0]['site'].title()} over {site_prices[-1]['site'].title()}"
                         )
             else:
-                st.info("All variants are currently out of stock")
+                st.info("All items are currently out of stock")
 
             st.divider()
 
