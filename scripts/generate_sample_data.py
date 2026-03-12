@@ -13,11 +13,10 @@ import sqlite3
 import sys
 from datetime import datetime, timedelta
 
+from click import Path
 import numpy as np
 
-# Resolve DB path relative to the project root (one level up from scripts/)
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..")
-DB_PATH = os.path.join(PROJECT_ROOT, "price_monitor.db")
+DB_PATH = Path(__file__).parent.parent / "price_monitor.db"
 
 
 def generate_sample_data() -> None:

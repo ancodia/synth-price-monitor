@@ -19,6 +19,9 @@ from pathlib import Path
 import pytest
 import requests
 
+# Resolve project root (two levels up from tests/e2e/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 from database import Database
 from pipeline import init_db
 
