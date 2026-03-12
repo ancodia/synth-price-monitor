@@ -47,7 +47,7 @@ class TestProductDisplay:
 
     def test_dashboard_title_visible(self, page: Page):
         """The main title should be visible."""
-        expect(page.locator("text=UK Synth Price Monitor")).to_be_visible()
+        expect(page.locator("text=Synth Price Monitor")).to_be_visible()
 
     def test_product_count_metric(self, page: Page, attach_screenshot):
         """The 'Products Tracked' metric should show 3 (one per retailer)."""

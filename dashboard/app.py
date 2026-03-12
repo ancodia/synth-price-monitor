@@ -202,7 +202,7 @@ with st.sidebar:
 # Main dashboard header
 # ------------------------------------------------------------------
 
-st.title("UK Synth Price Monitor")
+st.title("Synth Price Monitor")
 st.caption("Automated price tracking across UK music retailers")
 
 # ------------------------------------------------------------------

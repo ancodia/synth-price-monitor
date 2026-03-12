@@ -1,4 +1,4 @@
-# UK Synth Price Monitor
+# Synth Price Monitor
 
 [![Unit Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/unit-tests.yml)
 [![E2E Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml)
