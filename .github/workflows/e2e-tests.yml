@@ -11,6 +11,9 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      checks: write
+      contents: read
 
     steps:
       - name: Checkout code
