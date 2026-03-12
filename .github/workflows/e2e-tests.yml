@@ -32,10 +32,6 @@ jobs:
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
 
-      # ── Unit tests first (fast fail) ──────────────────────────
-      - name: Run unit tests
-        run: uv run pytest tests/unit/test_scrapers.py -v --junit-xml=test-results/unit.xml
-
       # ── Alert pipeline tests (mock Slack + SMTP) ─────────────
       - name: Run alert e2e tests
         run: uv run pytest tests/e2e/test_alerts.py -v --timeout=60 --junit-xml=test-results/alerts.xml
@@ -44,16 +40,16 @@ jobs:
       - name: Run UI e2e tests
         run: uv run pytest tests/e2e/test_ui.py -v --timeout=120 --junit-xml=test-results/ui.xml --tracing=retain-on-failure --html=test-results/report.html --self-contained-html
 
-      # ── Publish test results ───────────────────────────────────
-      - name: Publish test results
+      # ── Publish e2e test results ───────────────────────────────
+      - name: Publish e2e test results
         uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: Test Results
+          name: E2E Test Results
           path: test-results/*.xml
           reporter: java-junit
 
-      # ── Upload HTML report (always) ───────────────────────────
+      # ── Upload HTML report as artifact ─────────────────────────
       - name: Upload UI test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -70,3 +66,33 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 14
+
+  # ── Deploy HTML report to GitHub Pages (main branch only) ─────
+  deploy-report:
+    needs: e2e
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Download HTML report
+        uses: actions/download-artifact@v4
+        with:
+          name: ui-test-report
+          path: _site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site/
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

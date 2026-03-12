@@ -1,7 +1,9 @@
 # UK Synth Price Monitor
 
+[![Unit Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/unit-tests.yml)
 [![E2E Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Test Report](https://img.shields.io/badge/Test%20Report-GitHub%20Pages-blue)](https://ancodia.github.io/synth-price-monitor/)
 
 ## Overview
 
@@ -274,7 +276,10 @@ tests/
 
 ### CI
 
-Tests run on every push and pull request to `main` via `.github/workflows/e2e-tests.yml`. Unit tests run first as a fast-fail gate, followed by alert e2e tests, then UI tests. Logs and Playwright traces are uploaded as artifacts and retained for 14 days.
+Two workflows run on every push and pull request to `main`:
+
+- **`unit-tests.yml`** — fast-feedback unit tests only (no Playwright, ~1 min). Results published as a GitHub Check.
+- **`e2e-tests.yml`** — alert pipeline and UI e2e tests. Results published as a GitHub Check. On pushes to `main`, the HTML report (with embedded screenshots) is deployed to [GitHub Pages](https://ancodia.github.io/synth-price-monitor/). Playwright traces are uploaded as artifacts on failure and retained for 14 days.
 
 ### Test Dependencies
 
