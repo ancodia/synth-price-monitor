@@ -8,6 +8,9 @@ Run with:
 import os
 import sys
 
+# Make src/ importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
 import plotly.graph_objects as go
 import streamlit as st
 from dotenv import load_dotenv
@@ -19,9 +22,6 @@ from scraper_sync import scrape_product_sync
 from scrapers.registry import get_scraper_for_url
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
-
-# Make src/ importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # ------------------------------------------------------------------
 # Page config & custom CSS
