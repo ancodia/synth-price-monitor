@@ -88,6 +88,9 @@ jobs:
           name: ui-test-report
           path: _site
 
+      - name: Rename report to index.html
+        run: mv _site/report.html _site/index.html
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
