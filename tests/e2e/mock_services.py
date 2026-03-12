@@ -90,7 +90,6 @@ class MockSlackServer:
     Usage:
         server = MockSlackServer(port=9100)
         server.start()
-        # ... run pipeline with SLACK_WEBHOOK_URL=http://localhost:9100/webhook ...
         assert len(server.messages) == 1
         assert server.messages[0].contains_text("Price Alert")
         server.stop()
@@ -211,7 +210,6 @@ class MockSMTPServer:
     Usage:
         server = MockSMTPServer(port=9025)
         server.start()
-        # ... run pipeline with SMTP_HOST=127.0.0.1, SMTP_PORT=9025 ...
         assert len(server.emails) == 1
         assert "Price Drop" in server.emails[0].subject
         server.stop()

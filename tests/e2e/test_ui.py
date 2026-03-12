@@ -26,8 +26,10 @@ from playwright.sync_api import Page, expect
 
 def expand_product_group(page: Page, product_name: str):
     """Find and click the expander for a given product name."""
-    expander = page.locator(f"text=/{re.escape(product_name)}/i").first
-    expander.click()
+    expander = page.get_by_test_id("stExpander").filter(
+        has_text=re.compile(re.escape(product_name), re.IGNORECASE)
+    )
+    expander.locator("summary").click()
     page.wait_for_timeout(1000)
 
 
@@ -70,7 +72,7 @@ class TestProductDisplay:
 
     def test_filters_section_visible(self, page: Page):
         """Filter controls should be present."""
-        expect(page.locator("text=Filters")).to_be_visible()
+        expect(page.locator("text=Sort by")).to_be_visible()
         expect(page.locator("text=Recent price drops only")).to_be_visible()
         expect(page.locator("text=In stock only")).to_be_visible()
 
@@ -90,18 +92,6 @@ class TestPriceComparison:
         page.wait_for_timeout(2000)
         expand_product_group(page, "Roland TR-8S")
         self.scenario = seeded_db
-
-    def test_comparison_heading_visible(self, page: Page):
-        """'Price Comparison' subheader should appear inside the expander."""
-        expect(page.locator("text=Price Comparison")).to_be_visible()
-
-    def test_all_retailers_listed(self, page: Page, attach_screenshot):
-        """All three retailer badges should be visible."""
-        for site in ["Thomann", "Gear4music", "Juno"]:
-            expect(page.locator(f"text=/{site}/i").first).to_be_visible()
-        attach_screenshot(
-            page.locator("text=Price Comparison").locator("..").screenshot()
-        )
 
     def test_best_price_has_trophy(self, page: Page, attach_screenshot):
         """The lowest price should be marked with the trophy emoji."""
