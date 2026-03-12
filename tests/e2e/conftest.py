@@ -3,10 +3,8 @@ Shared fixtures for e2e tests.
 
 Manages:
   - Fresh SQLite database per test session
-  - Mock Slack webhook server
-  - Mock SMTP server
   - Streamlit dashboard process (started once, used by all UI tests)
-  - Environment variable injection for notification credentials
+  - Environment variable injection (dummy values to prevent real alerts)
 """
 
 import base64
@@ -24,7 +22,6 @@ import requests
 from database import Database
 from pipeline import init_db
 
-from .mock_services import MockSlackServer, MockSMTPServer
 from .seed_test_data import seed_full_scenario
 
 # Resolve project root (two levels up from tests/e2e/)
@@ -35,8 +32,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 # Configuration
 # ------------------------------------------------------------------
 
-SLACK_PORT = 9100
-SMTP_PORT = 9025
 STREAMLIT_PORT = 8599  # Non-default port to avoid clashes
 STREAMLIT_STARTUP_TIMEOUT = 30  # seconds
 
@@ -75,45 +70,22 @@ def seeded_db(db):
 
 
 # ------------------------------------------------------------------
-# Mock notification servers
+# Notification environment (dummy values — UI tests never fire real alerts)
 # ------------------------------------------------------------------
 
 
 @pytest.fixture(scope="session")
-def mock_slack():
-    """Session-scoped mock Slack webhook server."""
-    server = MockSlackServer(port=SLACK_PORT)
-    server.start()
-    time.sleep(0.2)
-    yield server
-    server.stop()
-
-
-@pytest.fixture(scope="session")
-def mock_smtp():
-    """Session-scoped mock SMTP server."""
-    server = MockSMTPServer(port=SMTP_PORT)
-    server.start()
-    time.sleep(0.2)
-    yield server
-    server.stop()
-
-
-@pytest.fixture(scope="session")
-def notification_env(mock_slack, mock_smtp):
-    """
-    Set environment variables so the pipeline sends notifications
-    to our mock servers instead of real Slack/email.
-    """
+def notification_env():
+    """Inject dummy notification vars so the dashboard never fires real alerts."""
     env = {
-        "SLACK_WEBHOOK_URL": mock_slack.webhook_url,
+        "SLACK_WEBHOOK_URL": "http://127.0.0.1:1/no-op",
         "SMTP_HOST": "127.0.0.1",
-        "SMTP_PORT": str(SMTP_PORT),
+        "SMTP_PORT": "9999",
         "SMTP_USER": "test@example.com",
         "SMTP_PASSWORD": "testpassword",
         "EMAIL_FROM": "test@example.com",
         "EMAIL_TO": "recipient@example.com",
-        "SMTP_USE_TLS": "false",  # Plain SMTP for mock server
+        "SMTP_USE_TLS": "false",
     }
 
     original_env = {}
@@ -123,7 +95,6 @@ def notification_env(mock_slack, mock_smtp):
 
     yield env
 
-    # Restore original environment
     for key, original in original_env.items():
         if original is None:
             os.environ.pop(key, None)

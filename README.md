@@ -1,6 +1,7 @@
 # Synth Price Monitor
 
 [![Unit Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/unit-tests.yml)
+[![Integration Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/integration-tests.yml)
 [![E2E Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml)
 [![Test Report](https://img.shields.io/badge/Test%20Report-GitHub%20Pages-blue)](https://ancodia.github.io/synth-price-monitor/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -27,7 +28,7 @@ Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. Thi
 
 **Extensibility** — Site registry pattern means adding a new retailer is one class and one dict entry. Zero pipeline changes.
 
-**Verified correctness** — Two-layer test suite: fast unit tests plus full e2e tests with mock Slack/SMTP servers, a seeded database, and Playwright UI tests against a live Streamlit instance. CI publishes results to GitHub Pages.
+**Verified correctness** — Three-layer test suite: pure unit tests, integration tests with mock Slack/SMTP servers, and Playwright UI tests against a live Streamlit instance. Three separate CI jobs publish results to GitHub Pages.
 
 ---
 
@@ -156,21 +157,27 @@ No changes needed to the pipeline, database, dashboard, or alert logic.
 
 ## Testing
 
-Two-layer test suite: fast unit tests and full e2e tests with real infrastructure.
+Three-layer test suite, each with a separate CI job.
 
-### Unit tests (~1 min, no browser)
+### Unit tests (~1 min, no browser, no network)
 
-Price parsing across formats, database idempotency, circuit breaker state machine, and alert decision logic with edge cases (cooldown, zero prices, stock transitions).
+Pure function tests for price parsing, database idempotency, circuit breaker state machine, and alert decision logic (`should_alert()`). No fixtures, no database, no mock servers.
 
 ```bash
 uv run pytest tests/unit/ -v
 ```
 
-### e2e tests (~2 min, Playwright + mock services)
+### Integration tests (~1 min, mock Slack/SMTP)
 
-**Alert pipeline**: Mock Slack webhook and SMTP servers capture real HTTP/SMTP traffic. Tests verify the full flow: price drop detection → alert decision → notification delivery → payload content validation.
+Mock Slack webhook and SMTP servers capture real HTTP/SMTP traffic. Tests verify the full notification flow: payload formatting, content validation, and the end-to-end path from `should_alert()` to delivered message.
 
-**UI tests**: Playwright drives a live Streamlit instance seeded with 14 days of price history across 3 retailers plus a Thomann price drop. Tests verify product grouping, comparison table rendering, chart traces, alert controls, and the best deals section.
+```bash
+uv run pytest tests/integration/ -v
+```
+
+### E2E tests (~2 min, Playwright)
+
+Playwright drives a live Streamlit instance seeded with 14 days of price history across 3 retailers plus a Thomann price drop. Tests verify product grouping, comparison table rendering, chart traces, alert controls, and the best deals section.
 
 ```bash
 uv run playwright install --with-deps chromium
@@ -179,7 +186,7 @@ uv run pytest tests/e2e/ -v --timeout=120
 
 ### CI
 
-Both suites run on every push and PR to `main`. Results are published as GitHub Checks. The HTML test report (with embedded screenshots) deploys to [GitHub Pages](https://ancodia.github.io/synth-price-monitor/) on main branch pushes. Playwright traces upload as artifacts on failure.
+All three suites run on every push and PR to `main` as separate jobs. Results are published as GitHub Checks. The HTML test report (with embedded screenshots) deploys to [GitHub Pages](https://ancodia.github.io/synth-price-monitor/) on main branch pushes. Playwright traces upload as artifacts on failure.
 
 ---
 
@@ -244,16 +251,21 @@ synth-price-monitor/
 │   └── scraper_sync.py         # Async bridge for Streamlit
 ├── tests/
 │   ├── unit/
-│   │   └── test_scrapers.py    # Price parsing, idempotency, circuit breaker, alerts
+│   │   ├── test_scrapers.py    # Price parsing, idempotency, circuit breaker
+│   │   └── test_should_alert.py # Alert decision logic (pure unit tests)
+│   ├── integration/
+│   │   ├── conftest.py         # Mock Slack + SMTP servers (ports 9200/9225)
+│   │   ├── mock_services.py    # MockSlackServer, MockSMTPServer
+│   │   ├── test_notifications.py # Slack + email payload validation
+│   │   └── test_alert_pipeline.py # Full decision → send → verify flow
 │   └── e2e/
-│       ├── conftest.py         # Session fixtures (db, mock servers, Streamlit)
-│       ├── mock_services.py    # Mock Slack + SMTP servers
+│       ├── conftest.py         # Session fixtures (db, Streamlit process)
 │       ├── seed_test_data.py   # 3-retailer scenario with price drop
-│       ├── test_alerts.py      # Alert pipeline e2e
 │       └── test_ui.py          # Playwright UI tests
 ├── .github/workflows/
 │   ├── unit-tests.yml          # Fast CI (~1 min)
-│   └── e2e-tests.yml           # Full e2e CI + GitHub Pages report
+│   ├── integration-tests.yml   # Mock server tests (~1 min)
+│   └── e2e-tests.yml           # Playwright CI + GitHub Pages report
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml
