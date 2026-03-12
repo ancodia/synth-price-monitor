@@ -29,23 +29,30 @@ jobs:
 
       # ── Unit tests first (fast fail) ──────────────────────────
       - name: Run unit tests
-        run: uv run pytest tests/unit/test_scrapers.py -v
+        run: uv run pytest tests/unit/test_scrapers.py -v --junit-xml=test-results/unit.xml
 
       # ── Alert pipeline tests (mock Slack + SMTP) ─────────────
       - name: Run alert e2e tests
-        run: uv run pytest tests/e2e/test_alerts.py -v --timeout=60
+        run: uv run pytest tests/e2e/test_alerts.py -v --timeout=60 --junit-xml=test-results/alerts.xml
 
       # ── UI tests (Streamlit + Playwright) ─────────────────────
       - name: Run UI e2e tests
-        run: uv run pytest tests/e2e/test_ui.py -v --timeout=120
+        run: uv run pytest tests/e2e/test_ui.py -v --timeout=120 --junit-xml=test-results/ui.xml --tracing=retain-on-failure
 
-      # ── Logs ──────────────────────────────────────────────────
-      - name: Upload test logs
+      # ── Publish test results ───────────────────────────────────
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
         if: always()
+        with:
+          name: Test Results
+          path: test-results/*.xml
+          reporter: java-junit
+
+      # ── Upload Playwright traces on failure ────────────────────
+      - name: Upload Playwright traces
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-test-logs
-          path: |
-            logs/
-            test-results/
+          name: playwright-traces
+          path: test-results/
           retention-days: 14
