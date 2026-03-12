@@ -2,7 +2,7 @@
 Unit tests for the Synth Price Monitor.
 
 Run with:
-    uv run pytest tests/ -v
+    uv run pytest tests/unit/ -v
 
 Live scraper tests are marked skip — they require an internet connection
 and working CSS selectors on the real sites.

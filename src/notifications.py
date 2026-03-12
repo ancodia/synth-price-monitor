@@ -169,9 +169,16 @@ def send_email_alert(
 
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP_SSL(smtp_host, int(smtp_port), timeout=15) as server:
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
+        # Support plain SMTP for testing (mock servers don't support TLS)
+        use_tls = os.getenv("SMTP_USE_TLS", "true").lower() != "false"
+
+        if use_tls:
+            with smtplib.SMTP_SSL(smtp_host, int(smtp_port), timeout=15) as server:
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_host, int(smtp_port), timeout=15) as server:
+                server.send_message(msg)
 
         logger.success(f"Email notification sent for {product_name}")
 

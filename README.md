@@ -278,7 +278,7 @@ Products are soft-deleted (marked inactive) rather than hard-deleted.
 ## Running Tests
 
 ```bash
-uv run pytest tests/ -v
+uv run pytest tests/unit/ -v
 ```
 
 Unit tests cover: price parsing, idempotency logic, circuit breaker state transitions, alert cooldown and threshold logic. Live scraper tests are marked skip.
