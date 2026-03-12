@@ -7,6 +7,7 @@ Run with:
 Live scraper tests are marked skip — they require an internet connection
 and working CSS selectors on the real sites.
 """
+
 from datetime import datetime, timedelta
 
 import pytest
@@ -21,12 +22,14 @@ from pipeline import should_alert
 # _parse_price tests
 # ------------------------------------------------------------------
 
+
 class ConcreteScraper(SiteScraper):
     """Minimal concrete subclass to exercise base-class methods without a browser."""
+
     site_name = "test"
 
     async def _handle_cookie_consent(self, page):
-        pass  
+        pass
 
     async def _extract_price(self, page) -> str:
         return ""
@@ -43,15 +46,18 @@ def scraper():
     return ConcreteScraper()
 
 
-@pytest.mark.parametrize("raw,expected", [
-    ("£589.00", 589.0),
-    ("£589", 589.0),
-    ("£589 inc. VAT", 589.0),
-    ("£589 incl. VAT", 589.0),
-    ("589,00 €", 589.0),        # European decimal comma
-    ("£1,299.00", 1299.0),      # Thousands separator
-    ("  £ 49.99  ", 49.99),     # Whitespace
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("£589.00", 589.0),
+        ("£589", 589.0),
+        ("£589 inc. VAT", 589.0),
+        ("£589 incl. VAT", 589.0),
+        ("589,00 €", 589.0),  # European decimal comma
+        ("£1,299.00", 1299.0),  # Thousands separator
+        ("  £ 49.99  ", 49.99),  # Whitespace
+    ],
+)
 def test_parse_price_formats(scraper, raw, expected):
     assert scraper._parse_price(raw) == pytest.approx(expected, abs=0.01)
 
@@ -65,9 +71,11 @@ def test_parse_price_invalid(scraper):
 # Database idempotency tests
 # ------------------------------------------------------------------
 
+
 @pytest.fixture
 def in_memory_db():
     from database import Database
+
     db = Database(":memory:")
     product_id = db.add_product("Test Synth", "thomann", "https://example.com/synth")
     return db, product_id
@@ -114,6 +122,7 @@ def test_stock_change_accepted(in_memory_db):
 def test_database_context_manager():
     """Database should support the 'with' statement."""
     from database import Database
+
     with Database(":memory:") as db:
         pid = db.add_product("Moog Sub 37", "thomann", "https://example.com/moog")
         assert pid > 0
@@ -122,6 +131,7 @@ def test_database_context_manager():
 # ------------------------------------------------------------------
 # Circuit breaker tests
 # ------------------------------------------------------------------
+
 
 def test_circuit_breaker_starts_closed():
     cb = CircuitBreaker(failure_threshold=3)
@@ -172,6 +182,7 @@ def test_circuit_breaker_timeout_resets():
 # ------------------------------------------------------------------
 # should_alert tests
 # ------------------------------------------------------------------
+
 
 def make_config(threshold=5.0, alert_stock=True, last_alert=None):
     return AlertConfig(
@@ -279,6 +290,7 @@ def test_should_alert_zero_base_price_no_crash():
 # ------------------------------------------------------------------
 # Live scraper stubs (skipped — require real sites + selectors)
 # ------------------------------------------------------------------
+
 
 @pytest.mark.skip(reason="Requires live site access and configured CSS selectors")
 def test_thomann_scraper_live():

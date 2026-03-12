@@ -4,6 +4,7 @@ Circuit breaker pattern to prevent cascade failures when sites are down.
 After failure_threshold consecutive failures for a site, the circuit opens
 and all requests to that site are skipped for `timeout` duration.
 """
+
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict
@@ -19,7 +20,9 @@ class CircuitBreaker:
         OPEN    - Site failing, requests are skipped for `timeout`
     """
 
-    def __init__(self, failure_threshold: int = 3, timeout: timedelta = timedelta(hours=1)):
+    def __init__(
+        self, failure_threshold: int = 3, timeout: timedelta = timedelta(hours=1)
+    ):
         self.failure_threshold = failure_threshold
         self.timeout = timeout
         self.failures: Dict[str, int] = defaultdict(int)

@@ -12,6 +12,7 @@ Prerequisites:
   - seeded_db fixture provides 14 days of price history + a Thomann price drop
   - streamlit_app fixture starts the dashboard on a test port
 """
+
 import re
 
 import pytest
@@ -21,6 +22,7 @@ from playwright.sync_api import Page, expect
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def expand_product_group(page: Page, product_name: str):
     """Find and click the expander for a given product name."""
@@ -32,6 +34,7 @@ def expand_product_group(page: Page, product_name: str):
 # ------------------------------------------------------------------
 # Product display tests
 # ------------------------------------------------------------------
+
 
 class TestProductDisplay:
     """Verify that seeded products appear correctly in the dashboard."""
@@ -48,7 +51,9 @@ class TestProductDisplay:
 
     def test_product_count_metric(self, page: Page, attach_screenshot):
         """The 'Products Tracked' metric should show 3 (one per retailer)."""
-        metric = page.locator("[data-testid='stMetric']").filter(has_text="Products Tracked")
+        metric = page.locator("[data-testid='stMetric']").filter(
+            has_text="Products Tracked"
+        )
         expect(metric).to_contain_text("3")
         attach_screenshot(metric.screenshot())
 
@@ -74,6 +79,7 @@ class TestProductDisplay:
 # Price comparison table tests
 # ------------------------------------------------------------------
 
+
 class TestPriceComparison:
     """Verify the multi-site comparison table inside the product expander."""
 
@@ -93,7 +99,9 @@ class TestPriceComparison:
         """All three retailer badges should be visible."""
         for site in ["Thomann", "Gear4music", "Juno"]:
             expect(page.locator(f"text=/{site}/i").first).to_be_visible()
-        attach_screenshot(page.locator("text=Price Comparison").locator("..").screenshot())
+        attach_screenshot(
+            page.locator("text=Price Comparison").locator("..").screenshot()
+        )
 
     def test_best_price_has_trophy(self, page: Page, attach_screenshot):
         """The lowest price should be marked with the trophy emoji."""
@@ -131,6 +139,7 @@ class TestPriceComparison:
 # ------------------------------------------------------------------
 # Chart tests
 # ------------------------------------------------------------------
+
 
 class TestChartDisplay:
     """Verify that price history charts render correctly."""
@@ -170,6 +179,7 @@ class TestChartDisplay:
 # Manage retailers tests
 # ------------------------------------------------------------------
 
+
 class TestManageRetailers:
     """Verify the delete/manage UI for multi-site products."""
 
@@ -193,6 +203,7 @@ class TestManageRetailers:
 # ------------------------------------------------------------------
 # Best deals section tests
 # ------------------------------------------------------------------
+
 
 class TestBestDeals:
     """Verify the cross-site best deals section at the bottom."""

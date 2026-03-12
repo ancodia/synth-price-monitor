@@ -2,6 +2,7 @@
 Data models for the Synth Price Monitor.
 Pydantic models enforce type safety at every boundary.
 """
+
 from enum import Enum
 from datetime import datetime
 from typing import Optional
@@ -16,6 +17,7 @@ class StockStatus(str, Enum):
 
 class ScrapedProduct(BaseModel):
     """Raw data returned directly from a scraper."""
+
     name: str
     price: float
     currency: str = "GBP"
@@ -26,6 +28,7 @@ class ScrapedProduct(BaseModel):
 
 class Product(BaseModel):
     """A product record stored in the database."""
+
     id: int
     name: str
     site: str
@@ -36,6 +39,7 @@ class Product(BaseModel):
 
 class PriceSnapshot(BaseModel):
     """A single price/stock observation for a product."""
+
     id: Optional[int] = None
     product_id: int
     price: float
@@ -46,6 +50,7 @@ class PriceSnapshot(BaseModel):
 
 class AlertConfig(BaseModel):
     """Alert configuration for a tracked product."""
+
     product_id: int
     threshold_percent: float = 5.0
     alert_on_stock_change: bool = True

@@ -1,6 +1,7 @@
 """
 Thomann scraper (www.thomann.co.uk).
 """
+
 from playwright.async_api import Page, expect
 
 from models import StockStatus

@@ -7,6 +7,7 @@ Key engineering features:
   - Alert spam prevention (24-hour cooldown)
   - Graceful degradation (single product failure doesn't abort the run)
 """
+
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
@@ -36,6 +37,7 @@ def init_db(database: Database) -> None:
 # Alert logic
 # ------------------------------------------------------------------
 
+
 def should_alert(
     new_snapshot: PriceSnapshot,
     last_snapshot: Optional[PriceSnapshot],
@@ -63,9 +65,7 @@ def should_alert(
         cooldown = datetime.now() - config.last_alert_sent
         if cooldown < timedelta(hours=24):
             remaining = 24 - cooldown.total_seconds() / 3600
-            logger.debug(
-                f"Alert suppressed — in cooldown ({remaining:.1f}h remaining)"
-            )
+            logger.debug(f"Alert suppressed — in cooldown ({remaining:.1f}h remaining)")
             return False, "Cooldown active"
 
     # Price drop threshold check
@@ -90,6 +90,7 @@ def should_alert(
 # Scraping with retry
 # ------------------------------------------------------------------
 
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -103,6 +104,7 @@ async def scrape_with_retry(scraper, url: str) -> Optional[PriceSnapshot]:
 # ------------------------------------------------------------------
 # Main pipeline
 # ------------------------------------------------------------------
+
 
 async def run_scrape_pipeline(product_id: int, url: str, site: str) -> None:
     """
@@ -167,7 +169,9 @@ async def run_scrape_pipeline(product_id: int, url: str, site: str) -> None:
 
             if last_snapshot and product and last_snapshot.price > 0:
                 percent_drop = (
-                    (last_snapshot.price - new_snapshot.price) / last_snapshot.price * 100
+                    (last_snapshot.price - new_snapshot.price)
+                    / last_snapshot.price
+                    * 100
                 )
 
                 try:
@@ -223,6 +227,7 @@ async def run_scrape_pipeline(product_id: int, url: str, site: str) -> None:
 # ------------------------------------------------------------------
 # Cross-site best deals
 # ------------------------------------------------------------------
+
 
 def get_best_deals() -> List[Dict[str, Any]]:
     """

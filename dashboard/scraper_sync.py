@@ -8,6 +8,7 @@ Usage:
     from scraper_sync import scrape_product_sync
     result = scrape_product_sync("https://www.thomann.co.uk/...")
 """
+
 import asyncio
 import sys
 import os
@@ -47,5 +48,6 @@ def scrape_product_sync(url: str) -> Optional[ScrapedProduct]:
 
     except Exception as e:
         import streamlit as st
+
         st.error(f"Scraping failed: {e}")
         return None

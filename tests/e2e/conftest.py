@@ -8,6 +8,8 @@ Manages:
   - Streamlit dashboard process (started once, used by all UI tests)
   - Environment variable injection for notification credentials
 """
+
+import base64
 import os
 import shutil
 import signal
@@ -19,14 +21,14 @@ from pathlib import Path
 import pytest
 import requests
 
-# Resolve project root (two levels up from tests/e2e/)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-
 from database import Database
 from pipeline import init_db
 
 from .mock_services import MockSlackServer, MockSMTPServer
 from .seed_test_data import seed_full_scenario
+
+# Resolve project root (two levels up from tests/e2e/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 # ------------------------------------------------------------------
@@ -42,6 +44,7 @@ STREAMLIT_STARTUP_TIMEOUT = 30  # seconds
 # ------------------------------------------------------------------
 # Database fixtures
 # ------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def test_db_path(tmp_path_factory):
@@ -74,6 +77,7 @@ def seeded_db(db):
 # ------------------------------------------------------------------
 # Mock notification servers
 # ------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def mock_slack():
@@ -131,6 +135,7 @@ def notification_env(mock_slack, mock_smtp):
 # Streamlit dashboard process
 # ------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def streamlit_app(test_db_path, seeded_db, notification_env):
     """
@@ -154,12 +159,19 @@ def streamlit_app(test_db_path, seeded_db, notification_env):
     env = {**os.environ, "STREAMLIT_SERVER_PORT": str(STREAMLIT_PORT)}
     process = subprocess.Popen(
         [
-            sys.executable, "-m", "streamlit", "run",
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
             str(PROJECT_ROOT / "dashboard" / "app.py"),
-            "--server.port", str(STREAMLIT_PORT),
-            "--server.address", "127.0.0.1",
-            "--server.headless", "true",
-            "--browser.gatherUsageStats", "false",
+            "--server.port",
+            str(STREAMLIT_PORT),
+            "--server.address",
+            "127.0.0.1",
+            "--server.headless",
+            "true",
+            "--browser.gatherUsageStats",
+            "false",
         ],
         env=env,
         cwd=str(PROJECT_ROOT),
@@ -206,6 +218,7 @@ def _wait_for_server(url: str, timeout: int = 30):
 # Playwright fixtures (using pytest-playwright)
 # ------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def browser_context_args():
     """Configure Playwright browser context for tests."""
@@ -213,6 +226,7 @@ def browser_context_args():
         "viewport": {"width": 1280, "height": 900},
         "ignore_https_errors": True,
     }
+
 
 # @pytest.fixture(scope="session")
 # def browser_type_launch_args():
@@ -225,10 +239,10 @@ def browser_context_args():
 # Screenshot capture for HTML report
 # ------------------------------------------------------------------
 
-import base64
 
 try:
     from pytest_html import extras as html_extras
+
     _PYTEST_HTML = True
 except ImportError:
     _PYTEST_HTML = False
@@ -242,10 +256,12 @@ def _png_extra(screenshot_bytes: bytes):
 @pytest.fixture
 def attach_screenshot(request):
     """Attach element-level screenshots to the pytest-html report for a test."""
+
     def _attach(screenshot_bytes: bytes):
         if not hasattr(request.node, "_element_screenshots"):
             request.node._element_screenshots = []
         request.node._element_screenshots.append(screenshot_bytes)
+
     return _attach
 
 

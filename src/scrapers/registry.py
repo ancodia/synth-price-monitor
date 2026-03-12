@@ -6,6 +6,7 @@ Adding a new retailer requires:
   2. Import it here and add an entry to SITE_REGISTRY
   3. No changes needed anywhere else in the pipeline
 """
+
 from typing import Type, Dict
 
 from .base import SiteScraper

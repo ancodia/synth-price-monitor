@@ -7,6 +7,7 @@ Provides functions to:
   - Insert a price drop scenario that triggers alerts
   - Insert enough data points to render charts
 """
+
 from datetime import datetime, timedelta
 from typing import Tuple
 
@@ -55,7 +56,9 @@ def seed_products(db: Database) -> dict:
             site=variant["site"],
             url=variant["url"],
         )
-        db.add_alert_config(product_id, threshold_percent=5.0, alert_on_stock_change=True)
+        db.add_alert_config(
+            product_id, threshold_percent=5.0, alert_on_stock_change=True
+        )
         product_ids[variant["site"]] = product_id
 
     return product_ids

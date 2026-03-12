@@ -7,6 +7,7 @@ Provides:
 
 Both run in background threads and expose captured messages for assertions.
 """
+
 import json
 import threading
 import time
@@ -21,9 +22,11 @@ from aiosmtpd.controller import Controller
 # Mock Slack webhook server
 # ------------------------------------------------------------------
 
+
 @dataclass
 class SlackMessage:
     """A captured Slack webhook payload."""
+
     payload: dict
     received_at: float = field(default_factory=time.time)
 
@@ -127,9 +130,11 @@ class MockSlackServer:
 # Mock SMTP server
 # ------------------------------------------------------------------
 
+
 @dataclass
 class CapturedEmail:
     """A captured email message."""
+
     peer: tuple
     mail_from: str
     rcpt_tos: list
@@ -139,6 +144,7 @@ class CapturedEmail:
     @property
     def subject(self) -> str:
         import email.header
+
         for line in self.data.split("\n"):
             if line.lower().startswith("subject:"):
                 raw = line.split(":", 1)[1].strip()
@@ -151,7 +157,9 @@ class CapturedEmail:
 
     def contains_text(self, text: str) -> bool:
         import email as email_lib
-        import quopri, base64
+        import quopri
+        import base64
+
         msg = email_lib.message_from_string(self.data)
         for part in msg.walk():
             cte = part.get("Content-Transfer-Encoding", "").lower()
@@ -159,12 +167,16 @@ class CapturedEmail:
             if isinstance(payload, str):
                 if cte == "base64":
                     try:
-                        decoded = base64.b64decode(payload).decode("utf-8", errors="replace")
+                        decoded = base64.b64decode(payload).decode(
+                            "utf-8", errors="replace"
+                        )
                     except Exception:
                         decoded = payload
                 elif cte == "quoted-printable":
                     try:
-                        decoded = quopri.decodestring(payload.encode()).decode("utf-8", errors="replace")
+                        decoded = quopri.decodestring(payload.encode()).decode(
+                            "utf-8", errors="replace"
+                        )
                     except Exception:
                         decoded = payload
                 else:

@@ -1,6 +1,7 @@
 """
 Juno Records scraper (www.juno.co.uk) - minimal stub.
 """
+
 from playwright.async_api import Page, expect
 
 from models import StockStatus
@@ -46,4 +47,3 @@ class JunoScraper(SiteScraper):
         selector = ".product-title-eq h1"
         element = await page.wait_for_selector(selector, timeout=10_000)
         return (await element.inner_text()).strip()
-    

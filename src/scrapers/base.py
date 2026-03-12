@@ -10,6 +10,7 @@ This means:
   - ~60 lines of duplicated boilerplate disappear from each scraper
   - Subclasses only need to implement _extract_price, _extract_stock, _extract_name
 """
+
 import re
 import time
 from abc import ABC, abstractmethod
@@ -130,7 +131,9 @@ class SiteScraper(ABC):
         """
         # Strip currency symbols and VAT labels
         cleaned = text.replace("£", "").replace("€", "")
-        cleaned = re.sub(r"inc\.?\s*VAT|incl\.?\s*VAT", "", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(
+            r"inc\.?\s*VAT|incl\.?\s*VAT", "", cleaned, flags=re.IGNORECASE
+        )
         cleaned = cleaned.strip()
 
         # Handle European decimal comma (e.g., "589,00" with no period)

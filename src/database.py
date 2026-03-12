@@ -5,6 +5,7 @@ Design note: SQLite + Git commit pattern enables zero-cost hosting and built-in
 backup via Git history. Not suitable for > ~1000 products or sub-hourly scraping.
 Production alternative: PostgreSQL on RDS or DynamoDB for serverless.
 """
+
 import sqlite3
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -118,7 +119,9 @@ class Database:
     # Price history
     # ------------------------------------------------------------------
 
-    def should_insert_snapshot(self, product_id: int, new_snapshot: PriceSnapshot) -> bool:
+    def should_insert_snapshot(
+        self, product_id: int, new_snapshot: PriceSnapshot
+    ) -> bool:
         """
         Idempotency check: only insert if price OR stock status changed.
         Prevents duplicate rows when data hasn't changed between scrapes.
@@ -285,7 +288,11 @@ class Database:
         biggest = 0.0
         for i in range(1, len(history)):
             if history[i - 1].price > 0 and history[i].price < history[i - 1].price:
-                drop = (history[i - 1].price - history[i].price) / history[i - 1].price * 100
+                drop = (
+                    (history[i - 1].price - history[i].price)
+                    / history[i - 1].price
+                    * 100
+                )
                 if drop > biggest:
                     biggest = drop
         return biggest if biggest > 0 else None

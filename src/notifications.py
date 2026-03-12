@@ -8,6 +8,7 @@ Supports:
 Both channels are optional: if credentials are not configured in .env,
 the notification is skipped with a warning rather than crashing the pipeline.
 """
+
 import html
 import os
 import smtplib
@@ -114,7 +115,9 @@ def send_email_alert(
     email_to = os.getenv("EMAIL_TO")
 
     if not all([smtp_host, smtp_port, smtp_user, smtp_password, email_from, email_to]):
-        logger.warning("Email credentials not fully configured, skipping email notification")
+        logger.warning(
+            "Email credentials not fully configured, skipping email notification"
+        )
         return
 
     try:

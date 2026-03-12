@@ -8,6 +8,7 @@ Invoked by:
 
 Exits with code 1 if ALL products failed (signals CI failure).
 """
+
 import asyncio
 import sys
 
@@ -28,7 +29,7 @@ def configure_logging() -> None:
     logger.add(
         "logs/scraper_{time:YYYY-MM-DD}.log",
         level="DEBUG",
-        rotation="00:00",        # New file each day
+        rotation="00:00",  # New file each day
         retention="30 days",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {message} | {extra}",
     )
@@ -61,9 +62,7 @@ async def main() -> None:
         nonlocal success_count, failure_count
         async with semaphore:
             try:
-                await run_scrape_pipeline(
-                    product.id, str(product.url), product.site
-                )
+                await run_scrape_pipeline(product.id, str(product.url), product.site)
                 success_count += 1
             except Exception as e:
                 logger.error(f"Unhandled error for product_id={product.id}: {e}")

@@ -7,13 +7,13 @@ including occasional drops and stock changes.
 Usage:
     python scripts/generate_sample_data.py
 """
+
 import os
 import random
 import sqlite3
-import sys
 from datetime import datetime, timedelta
 
-from click import Path
+from pathlib import Path
 import numpy as np
 
 DB_PATH = Path(__file__).parent.parent / "price_monitor.db"
@@ -51,49 +51,54 @@ def generate_sample_data() -> None:
     """)
 
     # Demo products: (name, site, url, base_price_gbp)
-    # TODO: Replace placeholder URLs with real product URLs for a convincing demo
     products = [
         (
             "Korg Minilogue XD",
             "thomann",
-            "https://www.thomann.co.uk/gb/korg_minilogue_xd.htm",
+            "https://www.thomann.co.uk/korg_minilogue_xd.htm",
             589.00,
         ),
         (
             "Korg Minilogue XD",
             "gear4music",
-            "https://www.gear4music.com/TODO_KORG_MINILOGUE_XD",  # TODO: fill real URL
+            "https://www.gear4music.com/Keyboards-and-Pianos/Korg-Minilogue-XD/2TGY",
             599.00,
         ),
         (
             "Behringer DeepMind 12",
             "thomann",
-            "https://www.thomann.co.uk/gb/behringer_deepmind12.htm",
+            "https://www.thomann.co.uk/behringer_deepmind12.htm",
             725.00,
         ),
         (
             "Behringer DeepMind 12",
             "gear4music",
-            "https://www.gear4music.com/TODO_DEEPMIND_12",  # TODO: fill real URL
+            "https://www.gear4music.com/Keyboards-and-Pianos/Behringer-Deepmind-12X-Synthesizer/73A2",
             729.00,
         ),
         (
             "Arturia MiniFreak",
             "thomann",
-            "https://www.thomann.co.uk/gb/arturia_minifreak.htm",
+            "https://www.thomann.co.uk/arturia_minifreak.htm",
             539.00,
         ),
         (
             "Arturia MiniFreak",
             "juno",
-            "https://www.juno.co.uk/TODO_ARTURIA_MINIFREAK",  # TODO: fill real URL
+            "https://www.juno.co.uk/products/arturia-minifreak-vocoder-edition-6-voice-polyphonic-hybrid/1093044-01/",
             549.00,
         ),
         (
             "Moog Subsequent 37",
             "thomann",
-            "https://www.thomann.co.uk/gb/moog_subsequent_37.htm",
+            "https://www.thomann.co.uk/moog_subsequent_37.htm",
             1599.00,
+        ),
+        (
+            "Moog Subsequent 37",
+            "juno",
+            "https://www.juno.co.uk/products/moog-subsequent-37-paraphonic-analogue-synthesiser/661865-01/",
+            1619.00,
         ),
     ]
 
@@ -157,7 +162,13 @@ def generate_sample_data() -> None:
                 """INSERT INTO price_history
                    (product_id, price, currency, stock_status, scraped_at)
                    VALUES (?, ?, ?, ?, ?)""",
-                (product_id, round(current_price, 2), "GBP", stock, scraped_at.isoformat()),
+                (
+                    product_id,
+                    round(current_price, 2),
+                    "GBP",
+                    stock,
+                    scraped_at.isoformat(),
+                ),
             )
 
         # Add alert config
@@ -179,10 +190,10 @@ def generate_sample_data() -> None:
     conn.commit()
     conn.close()
 
-    print(f"\nSample data generated successfully!")
+    print("\nSample data generated successfully!")
     print(f"  {inserted_products} products inserted")
-    print(f"  14 days of price history per product")
-    print(f"  Realistic price fluctuations and stock changes")
+    print("  14 days of price history per product")
+    print("  Realistic price fluctuations and stock changes")
     print(f"\nDB path: {os.path.abspath(DB_PATH)}")
     print("\nNext step: streamlit run dashboard/app.py")
 

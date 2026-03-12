@@ -1,6 +1,7 @@
 """
 Gear4Music scraper (www.gear4music.com).
 """
+
 from playwright.async_api import Page, expect
 
 from models import StockStatus
