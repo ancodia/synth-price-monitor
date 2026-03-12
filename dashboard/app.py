@@ -255,6 +255,25 @@ with col4:
 st.divider()
 
 # ------------------------------------------------------------------
+# Best deals section
+# ------------------------------------------------------------------
+
+if best_deals:
+    st.subheader("Best Deals Across Sites")
+    cols = st.columns(4)
+    for i, deal in enumerate(best_deals[:8]):
+        with cols[i % 4]:
+            st.markdown(f"**{deal['product_name'].title()}**")
+            st.metric(
+                deal["best_site"].title(),
+                f"£{deal['best_price']:.2f}",
+                delta=f"-£{deal['savings']:.2f}",
+                delta_color="inverse",
+            )
+            st.link_button("View", deal["best_url"], use_container_width=True)
+    st.divider()
+
+# ------------------------------------------------------------------
 # Product grouping helper
 # ------------------------------------------------------------------
 
@@ -282,10 +301,13 @@ def group_products(product_list):
 
 
 # ------------------------------------------------------------------
+# Product list with expanders for details
+# ------------------------------------------------------------------
+st.subheader("Price Comparison Details")
+
+# ------------------------------------------------------------------
 # Filters
 # ------------------------------------------------------------------
-
-st.subheader("Filters")
 fcol1, fcol2, fcol3 = st.columns(3)
 
 with fcol1:
@@ -298,45 +320,71 @@ with fcol3:
         ["Name", "Biggest recent drop", "Lowest price", "Newest"],
     )
 
-# Apply filters
-filtered_products = list(products)
+# Group first, then filter and sort at group level
+product_groups = group_products(products)
 
 if show_only_deals:
-    filtered_products = [
-        p for p in filtered_products if db.had_price_drop_last_7_days(p.id)
+    product_groups = [
+        g
+        for g in product_groups
+        if any(db.had_price_drop_last_7_days(p.id) for p in g["products"])
     ]
 
 if show_only_in_stock:
-    filtered_products = [
-        p
-        for p in filtered_products
-        if (
-            (snap := cached_get_last_snapshot(db, p.id)) is not None
-            and snap.stock_status == StockStatus.IN_STOCK
+    product_groups = [
+        g
+        for g in product_groups
+        if any(
+            (s := cached_get_last_snapshot(db, p.id))
+            and s.stock_status == StockStatus.IN_STOCK
+            for p in g["products"]
         )
     ]
 
-# Apply sorting
 if sort_by == "Biggest recent drop":
-    filtered_products.sort(
-        key=lambda p: db.get_biggest_drop_last_30_days(p.id) or 0,
+    product_groups.sort(
+        key=lambda g: max(
+            (db.get_biggest_drop_last_30_days(p.id) or 0 for p in g["products"]),
+            default=0,
+        ),
         reverse=True,
     )
 elif sort_by == "Lowest price":
-    filtered_products.sort(
-        key=lambda p: (
-            snap.price if (snap := cached_get_last_snapshot(db, p.id)) else float("inf")
+    product_groups.sort(
+        key=lambda g: min(
+            (
+                s.price
+                for p in g["products"]
+                if (s := cached_get_last_snapshot(db, p.id))
+            ),
+            default=float("inf"),
         )
     )
 elif sort_by == "Newest":
-    filtered_products.sort(key=lambda p: p.added_date, reverse=True)
-else:
-    filtered_products.sort(key=lambda p: p.name)
+    product_groups.sort(
+        key=lambda g: max(p.added_date for p in g["products"]),
+        reverse=True,
+    )
+# "Name" is already the default sort from group_products()
 
-# Group products by normalized name
-product_groups = group_products(filtered_products)
+if "groups_expanded" not in st.session_state:
+    st.session_state.groups_expanded = False
 
-st.caption(f"Showing {len(filtered_products)} products in {len(product_groups)} groups")
+cap_col, btn_col = st.columns([4, 1])
+with cap_col:
+    st.caption(
+        f"Showing {sum(len(g['products']) for g in product_groups)} products "
+        f"in {len(product_groups)} groups"
+    )
+with btn_col:
+    btn_label = "Collapse all" if st.session_state.groups_expanded else "Expand all"
+    st.button(
+        btn_label,
+        use_container_width=True,
+        on_click=lambda: st.session_state.update(
+            groups_expanded=not st.session_state.groups_expanded
+        ),
+    )
 
 # ------------------------------------------------------------------
 # Product list (grouped by product)
@@ -374,7 +422,7 @@ for group in product_groups:
         else:
             title = f"🎹 {group['group_name']} — {len(group['products'])} sites tracked"
 
-    with st.expander(title, expanded=False):
+    with st.expander(title, expanded=st.session_state.groups_expanded):
         # If multiple sites, show comparison table and combined chart
         if len(group["products"]) > 1:
             st.subheader("Price Comparison")
@@ -682,40 +730,3 @@ for group in product_groups:
                     st.caption(
                         f"Last alert: {config.last_alert_sent.strftime('%Y-%m-%d %H:%M')}"
                     )
-
-# ------------------------------------------------------------------
-# Best deals section
-# ------------------------------------------------------------------
-
-st.divider()
-st.subheader("Best Deals Across Sites")
-
-if best_deals:
-    for deal in best_deals[:5]:
-        dcol1, dcol2, dcol3 = st.columns([3, 1, 1])
-
-        with dcol1:
-            st.markdown(f"**{deal['product_name'].title()}**")
-        with dcol2:
-            st.metric(
-                "Best Price",
-                f"£{deal['best_price']:.2f}",
-                delta=f"-£{deal['savings']:.2f}",
-                delta_color="inverse",
-            )
-        with dcol3:
-            st.markdown(f"[{deal['best_site'].title()}]({deal['best_url']})")
-
-        with st.expander("See all prices"):
-            for price_info in deal["all_prices"]:
-                pc1, pc2, pc3 = st.columns([2, 1, 1])
-                pc1.write(price_info["site"].title())
-                pc2.write(f"£{price_info['price']:.2f}")
-                pc3.link_button("View", price_info["url"])
-else:
-    st.info(
-        "No multi-site products tracked yet. "
-        "Add the same product from different retailers to compare prices."
-    )
-
-st.divider()
