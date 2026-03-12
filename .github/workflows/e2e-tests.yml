@@ -46,7 +46,7 @@ jobs:
         if: always()
         with:
           name: E2E Test Results
-          path: test-results/*.xml
+          path: test-results/alerts.xml,test-results/ui.xml
           reporter: java-junit
 
       # ── Upload HTML report as artifact ─────────────────────────
