@@ -78,9 +78,9 @@ graph TB
     B -->|Historical Data| K[Plotly Charts]
     K -->|Visualize| A
 
-    style E fill:#90EE90
-    style F fill:#FFB6C1
-    style J fill:#FFD700
+    style E fill:#90EE90,color:#000000
+    style F fill:#FFB6C1,color:#000000
+    style J fill:#FFD700,color:#000000
 ```
 
 The pipeline flow for each product: **scrape → validate → compare → alert → store**. Each step is isolated — a failure at any point is caught, logged, and doesn't propagate.
@@ -166,7 +166,7 @@ Price parsing across formats, database idempotency, circuit breaker state machin
 uv run pytest tests/unit/ -v
 ```
 
-### E2e tests (~2 min, Playwright + mock services)
+### e2e tests (~2 min, Playwright + mock services)
 
 **Alert pipeline**: Mock Slack webhook and SMTP servers capture real HTTP/SMTP traffic. Tests verify the full flow: price drop detection → alert decision → notification delivery → payload content validation.
 
