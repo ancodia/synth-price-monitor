@@ -1,9 +1,5 @@
 # UK Synth Price Monitor
 
-**Resilient price tracking system for UK music retailers** — demonstrating production-grade automation engineering.
-
-Built to showcase data pipeline automation, not just web scraping.
-
 [![E2E Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
