@@ -230,10 +230,12 @@ class Database:
         alert_on_stock_change: bool,
     ) -> None:
         self.conn.execute(
-            """UPDATE alert_config
-               SET threshold_percent = ?, alert_on_stock_change = ?
-               WHERE product_id = ?""",
-            (threshold_percent, int(alert_on_stock_change), product_id),
+            """INSERT INTO alert_config (product_id, threshold_percent, alert_on_stock_change)
+               VALUES (?, ?, ?)
+               ON CONFLICT(product_id) DO UPDATE SET
+                   threshold_percent = excluded.threshold_percent,
+                   alert_on_stock_change = excluded.alert_on_stock_change""",
+            (product_id, threshold_percent, int(alert_on_stock_change)),
         )
         self.conn.commit()
 
@@ -249,11 +251,11 @@ class Database:
     # ------------------------------------------------------------------
 
     def count_active_alerts(self) -> int:
-        """Number of products that have alert configs configured."""
+        """Number of products with stock alerts enabled."""
         row = self.conn.execute(
             """SELECT COUNT(*) FROM alert_config ac
                JOIN products p ON ac.product_id = p.id
-               WHERE p.is_active = 1"""
+               WHERE p.is_active = 1 AND ac.alert_on_stock_change = 1"""
         ).fetchone()
         return row[0]
 

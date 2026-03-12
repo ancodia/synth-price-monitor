@@ -17,6 +17,8 @@ dependencies = [
     "tenacity>=8.2.3",
     # HTTP (Slack notifications)
     "requests>=2.31.0",
+    # Environment variable loading
+    "python-dotenv>=1.0.0",
     # Sample data generation
     "numpy>=1.26.0",
 ]

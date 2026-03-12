@@ -9,6 +9,9 @@ import sys
 
 import plotly.graph_objects as go
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 # Make src/ importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -439,7 +442,7 @@ for group in product_groups:
                         with col_a:
                             if st.button("💾", key=f"save_{site_info['product'].id}", help="Save alert settings"):
                                 db.update_alert_config(site_info['product'].id, threshold, alert_stock)
-                                st.success("Saved!")
+                                st.toast("Saved!", icon="✅")
                         with col_b:
                             st.link_button("🔗", str(site_info['product'].url), help="View product")
                 
@@ -494,7 +497,25 @@ for group in product_groups:
                 st.info("Not enough data for a chart yet. Check back after the next scrape.")
             
             st.divider()
-            
+
+            # Test alert for the cheapest in-stock site in this group
+            if site_prices:
+                test_site = site_prices[0]  # already sorted cheapest first
+                if st.button("Test Alert", key=f"test_group_{test_site['product'].id}"):
+                    from notifications import send_slack_alert
+                    latest = test_site['snapshot']
+                    send_slack_alert(
+                        test_site['product'].name,
+                        latest.price * 1.1,
+                        latest.price,
+                        10.0,
+                        str(test_site['product'].url),
+                        test_site['product'].site,
+                    )
+                    st.toast("Test alert sent to Slack!", icon="✅")
+
+            st.divider()
+
             # Delete buttons for each site variant
             st.subheader("Manage Retailers")
             delete_cols = st.columns(len(group['products']))
@@ -603,7 +624,7 @@ for group in product_groups:
 
                 if st.button("Save Settings", key=f"save_{product.id}"):
                     db.update_alert_config(product.id, threshold, alert_stock)
-                    st.success("Saved!")
+                    st.toast("Saved!", icon="✅")
 
                 if st.button("Test Alert", key=f"test_{product.id}"):
                     latest = cached_get_last_snapshot(db, product.id)
