@@ -219,3 +219,50 @@ def browser_context_args():
 #     return {
 #         "headless": False,
 #     }
+
+
+# ------------------------------------------------------------------
+# Screenshot capture for HTML report
+# ------------------------------------------------------------------
+
+try:
+    from pytest_html import extras as html_extras
+    _PYTEST_HTML = True
+except ImportError:
+    _PYTEST_HTML = False
+
+
+@pytest.fixture
+def attach_screenshot(request):
+    """Attach element-level screenshots to the pytest-html report for a test."""
+    def _attach(screenshot_bytes: bytes):
+        if not hasattr(request.node, "_element_screenshots"):
+            request.node._element_screenshots = []
+        request.node._element_screenshots.append(screenshot_bytes)
+    return _attach
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    if not _PYTEST_HTML:
+        return
+    report = outcome.get_result()
+    if report.when != "call":
+        return
+
+    extra = getattr(report, "extras", [])
+
+    # Element screenshots attached explicitly during the test
+    for screenshot in getattr(item, "_element_screenshots", []):
+        extra.append(html_extras.png(screenshot))
+
+    # Full-page screenshot for visual context (every UI test)
+    page = item.funcargs.get("page")
+    if page is not None:
+        try:
+            extra.append(html_extras.png(page.screenshot(full_page=False)))
+        except Exception:
+            pass
+
+    report.extras = extra

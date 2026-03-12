@@ -46,14 +46,17 @@ class TestProductDisplay:
         """The main title should be visible."""
         expect(page.locator("text=UK Synth Price Monitor")).to_be_visible()
 
-    def test_product_count_metric(self, page: Page):
+    def test_product_count_metric(self, page: Page, attach_screenshot):
         """The 'Products Tracked' metric should show 3 (one per retailer)."""
         metric = page.locator("[data-testid='stMetric']").filter(has_text="Products Tracked")
         expect(metric).to_contain_text("3")
+        attach_screenshot(metric.screenshot())
 
-    def test_roland_tr8s_appears_in_list(self, page: Page):
+    def test_roland_tr8s_appears_in_list(self, page: Page, attach_screenshot):
         """Roland TR-8S should appear as a grouped product entry."""
-        expect(page.locator("text=/Roland TR-8S/")).to_be_visible()
+        entry = page.locator("text=/Roland TR-8S/").first
+        expect(entry).to_be_visible()
+        attach_screenshot(entry.locator("..").screenshot())
 
     def test_group_shows_site_count(self, page: Page):
         """The expander title should mention '3 sites' for the grouped product."""
@@ -86,14 +89,17 @@ class TestPriceComparison:
         """'Price Comparison' subheader should appear inside the expander."""
         expect(page.locator("text=Price Comparison")).to_be_visible()
 
-    def test_all_retailers_listed(self, page: Page):
+    def test_all_retailers_listed(self, page: Page, attach_screenshot):
         """All three retailer badges should be visible."""
         for site in ["Thomann", "Gear4music", "Juno"]:
             expect(page.locator(f"text=/{site}/i").first).to_be_visible()
+        attach_screenshot(page.locator("text=Price Comparison").locator("..").screenshot())
 
-    def test_best_price_has_trophy(self, page: Page):
+    def test_best_price_has_trophy(self, page: Page, attach_screenshot):
         """The lowest price should be marked with the trophy emoji."""
-        expect(page.locator("text=🏆").first).to_be_visible()
+        trophy = page.locator("text=🏆").first
+        expect(trophy).to_be_visible()
+        attach_screenshot(trophy.locator("..").locator("..").screenshot())
 
     def test_prices_are_numeric(self, page: Page):
         """At least one GBP price should be visible in the comparison."""
@@ -104,10 +110,12 @@ class TestPriceComparison:
         """Stock status badges should appear (all seeded as in_stock)."""
         expect(page.locator("text=/In Stock/i").first).to_be_visible()
 
-    def test_savings_message_visible(self, page: Page):
+    def test_savings_message_visible(self, page: Page, attach_screenshot):
         """If there's a price difference, a savings message should appear."""
         # Thomann dropped to 499, others are ~559/569 — savings should show
-        expect(page.locator("text=/Save £/").first).to_be_visible()
+        savings = page.locator("text=/Save £/").first
+        expect(savings).to_be_visible()
+        attach_screenshot(savings.locator("..").screenshot())
 
     def test_alert_threshold_inputs_exist(self, page: Page):
         """Each retailer row should have a threshold number input."""
@@ -138,10 +146,11 @@ class TestChartDisplay:
         """The combined chart section heading should be visible."""
         expect(page.locator("text=/Price History.*All Sites/i").first).to_be_visible()
 
-    def test_plotly_chart_renders(self, page: Page):
+    def test_plotly_chart_renders(self, page: Page, attach_screenshot):
         """A Plotly chart container should be present in the DOM."""
         chart = page.locator(".stPlotlyChart, .js-plotly-plot").first
         expect(chart).to_be_visible(timeout=10_000)
+        attach_screenshot(chart.screenshot())
 
     def test_chart_has_multiple_traces(self, page: Page):
         """The combined chart should show traces for each retailer."""
@@ -194,9 +203,11 @@ class TestBestDeals:
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(2000)
 
-    def test_best_deals_heading(self, page: Page):
+    def test_best_deals_heading(self, page: Page, attach_screenshot):
         """The 'Best Deals Across Sites' section should be visible."""
-        expect(page.locator("text=Best Deals Across Sites")).to_be_visible()
+        heading = page.locator("text=Best Deals Across Sites")
+        expect(heading).to_be_visible()
+        attach_screenshot(heading.locator("..").screenshot())
 
     def test_best_deal_shows_roland(self, page: Page):
         """Roland TR-8S should appear in best deals (multi-site tracking)."""

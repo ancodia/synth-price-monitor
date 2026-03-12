@@ -37,7 +37,7 @@ jobs:
 
       # ── UI tests (Streamlit + Playwright) ─────────────────────
       - name: Run UI e2e tests
-        run: uv run pytest tests/e2e/test_ui.py -v --timeout=120 --junit-xml=test-results/ui.xml --tracing=retain-on-failure
+        run: uv run pytest tests/e2e/test_ui.py -v --timeout=120 --junit-xml=test-results/ui.xml --tracing=retain-on-failure --html=test-results/report.html --self-contained-html
 
       # ── Publish test results ───────────────────────────────────
       - name: Publish test results
@@ -47,6 +47,15 @@ jobs:
           name: Test Results
           path: test-results/*.xml
           reporter: java-junit
+
+      # ── Upload HTML report (always) ───────────────────────────
+      - name: Upload UI test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-report
+          path: test-results/report.html
+          retention-days: 14
 
       # ── Upload Playwright traces on failure ────────────────────
       - name: Upload Playwright traces
