@@ -213,3 +213,9 @@ def browser_context_args():
         "viewport": {"width": 1280, "height": 900},
         "ignore_https_errors": True,
     }
+
+# @pytest.fixture(scope="session")
+# def browser_type_launch_args():
+#     return {
+#         "headless": False,
+#     }

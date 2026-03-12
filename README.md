@@ -4,6 +4,7 @@
 
 Built to showcase data pipeline automation, not just web scraping.
 
+[![E2E Tests](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/ancodia/synth-price-monitor/actions/workflows/e2e-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
@@ -17,9 +18,9 @@ Multi-site price monitoring system that tracks synthesizer prices across UK reta
 - Performance monitoring and structured logging
 - Smart alerting with threshold-based triggers and spam prevention
 - Fully automated via GitHub Actions
-- **User-controlled product grouping** - manual naming with autocomplete for multi-site comparison
-- **Combined price charts** - visual comparison of all retailers on a single chart
-- **Inline alert configuration** - adjust settings directly in the comparison table
+- **User-controlled product grouping** — manual naming with autocomplete for multi-site comparison
+- **Combined price charts** — visual comparison of all retailers on a single chart
+- **Inline alert configuration** — adjust settings directly in the comparison table
 
 ## Architecture
 
@@ -78,7 +79,7 @@ graph TB
 
 1. **Clone repository**
    ```bash
-   git clone https://github.com/yourusername/synth-price-monitor.git
+   git clone https://github.com/ancodia/synth-price-monitor.git
    cd synth-price-monitor
    ```
 
@@ -162,7 +163,7 @@ When multiple retailers are tracked for the same product:
 
 **Manage Retailers**:
 - Delete individual retailers while keeping others
-- Soft delete - re-adding restores full price history
+- Soft delete — re-adding restores full price history
 
 ### Single-Site Product View
 
@@ -210,6 +211,93 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
    SITE_REGISTRY["newsite.com"] = NewSiteScraper
    ```
 3. No changes needed anywhere else in the pipeline
+
+## Testing
+
+The test suite has two layers: fast unit tests and full e2e tests covering the alert pipeline and live dashboard.
+
+### Running Tests
+
+```bash
+# All tests
+uv run pytest tests/ -v
+
+# Unit tests only (fast, no I/O)
+uv run pytest tests/unit/ -v
+
+# Alert e2e tests (mock Slack + SMTP)
+uv run pytest tests/e2e/test_alerts.py -v --timeout=60
+
+# UI e2e tests (Playwright against live Streamlit)
+uv run pytest tests/e2e/test_ui.py -v --timeout=120
+```
+
+Playwright browsers must be installed before running UI tests:
+
+```bash
+uv run playwright install --with-deps chromium
+```
+
+### Test Structure
+
+```
+tests/
+├── unit/
+│   └── test_scrapers.py      # Price parsing, idempotency, circuit breaker, alert logic
+└── e2e/
+    ├── conftest.py           # Session-scoped fixtures (db, mock servers, Streamlit process)
+    ├── mock_services.py      # MockSlackServer and MockSMTPServer implementations
+    ├── seed_test_data.py     # Roland TR-8S across 3 retailers + price drop scenario
+    ├── test_alerts.py        # Alert pipeline e2e tests
+    └── test_ui.py            # Playwright UI tests against the live dashboard
+```
+
+### E2E Architecture
+
+**Mock Services** — Both notification channels are replaced with in-process servers running in background threads for the duration of the test session.
+
+- **MockSlackServer** listens on `http://127.0.0.1:9100/webhook` and captures every POST as a `SlackMessage` object. Tests assert on the full Block Kit payload — header text, field values, and raw content — without any Slack credentials.
+- **MockSMTPServer** (via `aiosmtpd`) listens on `127.0.0.1:9025` and captures emails as `CapturedEmail` objects exposing the decoded subject and body. The `notification_env` fixture injects environment variables so production code routes to the mock servers with no code changes.
+
+**Test Database** — A temporary SQLite database is created once per session. The `seeded_db` fixture populates it with:
+- Roland TR-8S tracked across Thomann, Gear4Music, and Juno Records
+- 14 days of stable price history with sub-threshold noise at each retailer
+- A Thomann price drop from £549 → £499 (~9.1%) seeded as two snapshots 2 hours apart
+
+**Streamlit Process** — The `streamlit_app` fixture starts the dashboard as a subprocess on port `8599`, pointing at the test database, and waits up to 30 seconds for it to become responsive before yielding the base URL to UI tests.
+
+### What the E2E Tests Cover
+
+**`test_alerts.py`**:
+- `TestSlackNotification` — sends a price drop alert via `send_slack_alert()` and asserts on the captured payload: header text, product name, old/new prices, savings, retailer, and URL
+- `TestEmailNotification` — same for `send_email_alert()`: verifies delivery and asserts on decoded subject and body content
+- `TestAlertDecisionLogic` — tests `should_alert()` with seeded scenarios: 9.1% Thomann drop fires, 2% Gear4Music drop does not, 24h cooldown suppresses repeat alerts, stock-change alert fires on out-of-stock → in-stock transition
+- `TestFullAlertPipeline` — full integration: decision → Slack send → email send → both mock servers verified in a single test
+
+**`test_ui.py`** — Playwright tests against the live Streamlit dashboard: product display, multi-site price comparison table, Plotly chart rendering, manage retailers section, and best deals panel.
+
+### CI
+
+Tests run on every push and pull request to `main` via `.github/workflows/e2e-tests.yml`. Unit tests run first as a fast-fail gate, followed by alert e2e tests, then UI tests. Logs and Playwright traces are uploaded as artifacts and retained for 14 days.
+
+### Test Dependencies
+
+```toml
+[dependency-groups]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-playwright>=0.5.0",
+    "pytest-timeout>=2.2.0",
+    "aiosmtpd>=1.4.4",
+]
+```
+
+Install with:
+
+```bash
+uv sync --frozen
+```
 
 ## Architecture Decisions
 
@@ -266,22 +354,9 @@ Products are soft-deleted (marked inactive) rather than hard-deleted.
 
 ### Combined vs Individual Charts
 
-**Multi-site products**: Single chart with all retailers overlaid
-- Easier visual comparison
-- Identify pricing patterns across retailers
-- Less scrolling
+**Multi-site products**: Single chart with all retailers overlaid — easier visual comparison, identify pricing patterns, less scrolling.
 
-**Single-site products**: Individual chart
-- Traditional focused view
-- Alert settings in sidebar
-
-## Running Tests
-
-```bash
-uv run pytest tests/unit/ -v
-```
-
-Unit tests cover: price parsing, idempotency logic, circuit breaker state transitions, alert cooldown and threshold logic. Live scraper tests are marked skip.
+**Single-site products**: Individual chart with traditional focused view and alert settings in sidebar.
 
 ## Project Structure
 
@@ -289,7 +364,7 @@ Unit tests cover: price parsing, idempotency logic, circuit breaker state transi
 synth-price-monitor/
 ├── .github/
 │   └── workflows/
-│       └── scrape.yml          # Daily automated runs
+│       └── e2e-tests.yml       # CI: unit + alert + UI tests on push/PR
 ├── src/
 │   ├── scrapers/
 │   │   ├── base.py             # Abstract scraper interface + price parser
@@ -307,14 +382,21 @@ synth-price-monitor/
 │   ├── app.py                  # Streamlit dashboard
 │   └── scraper_sync.py         # Sync wrapper (fixes Playwright + Streamlit conflict)
 ├── tests/
-│   └── test_scrapers.py        # Unit tests
+│   ├── unit/
+│   │   └── test_scrapers.py    # Unit tests
+│   └── e2e/
+│       ├── conftest.py         # Session fixtures
+│       ├── mock_services.py    # Mock Slack + SMTP servers
+│       ├── seed_test_data.py   # Test data seeding
+│       ├── test_alerts.py      # Alert pipeline e2e tests
+│       └── test_ui.py          # Playwright UI tests
 ├── scripts/
 │   └── generate_sample_data.py # Demo data generation
 ├── logs/                       # Log output directory
 ├── Dockerfile
 ├── docker-compose.yml
 ├── pyproject.toml
-├── uv.lock                     # Committed lockfile (auto-generated)
+├── uv.lock
 ├── .env.example
 └── README.md
 ```
@@ -344,6 +426,7 @@ Logs are written to `stdout` (INFO+) for GitHub Actions and to `logs/scraper_YYY
 - **Deployment**: Docker, docker-compose
 - **Logging**: loguru
 - **Resilience**: tenacity (retry), custom circuit breaker
+- **Testing**: pytest, pytest-playwright, aiosmtpd
 
 ## Roadmap
 
@@ -376,6 +459,7 @@ The scraping is the "what", but the engineering patterns are the "why" — and w
 4. **Observability**: Structured logging, performance monitoring
 5. **Smart Features**: Soft delete with reactivation, automatic UI refresh
 6. **Extensibility**: Site registry pattern makes adding retailers trivial
+7. **Verified Correctness**: Two-layer test suite with real mock infrastructure
 
 ## License
 

@@ -48,7 +48,7 @@ class TestProductDisplay:
 
     def test_product_count_metric(self, page: Page):
         """The 'Products Tracked' metric should show 3 (one per retailer)."""
-        metric = page.locator("text=Products Tracked").locator("..")
+        metric = page.locator("[data-testid='stMetric']").filter(has_text="Products Tracked")
         expect(metric).to_contain_text("3")
 
     def test_roland_tr8s_appears_in_list(self, page: Page):

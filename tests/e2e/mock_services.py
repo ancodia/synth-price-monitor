@@ -138,12 +138,39 @@ class CapturedEmail:
 
     @property
     def subject(self) -> str:
+        import email.header
         for line in self.data.split("\n"):
             if line.lower().startswith("subject:"):
-                return line.split(":", 1)[1].strip()
+                raw = line.split(":", 1)[1].strip()
+                parts = email.header.decode_header(raw)
+                return "".join(
+                    part.decode(enc or "utf-8") if isinstance(part, bytes) else part
+                    for part, enc in parts
+                )
         return ""
 
     def contains_text(self, text: str) -> bool:
+        import email as email_lib
+        import quopri, base64
+        msg = email_lib.message_from_string(self.data)
+        for part in msg.walk():
+            cte = part.get("Content-Transfer-Encoding", "").lower()
+            payload = part.get_payload()
+            if isinstance(payload, str):
+                if cte == "base64":
+                    try:
+                        decoded = base64.b64decode(payload).decode("utf-8", errors="replace")
+                    except Exception:
+                        decoded = payload
+                elif cte == "quoted-printable":
+                    try:
+                        decoded = quopri.decodestring(payload.encode()).decode("utf-8", errors="replace")
+                    except Exception:
+                        decoded = payload
+                else:
+                    decoded = payload
+                if text.lower() in decoded.lower():
+                    return True
         return text.lower() in self.data.lower()
 
 
