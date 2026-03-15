@@ -34,8 +34,13 @@ Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. Thi
 
 ## Dashboard
 
-<!-- TODO: Replace these placeholders with actual screenshots -->
-<!-- Run: uv run python scripts/generate_sample_data.py && uv run streamlit run dashboard/app.py -->
+### Adding Products
+
+| Add new product group | Add URL to existing group |
+|---|---|
+| ![New product group](screenshots/add-new-product.png) | ![Add URL to existing product group](screenshots/add-to-existing-product.png) |
+
+
 
 ### Multi-site product comparison
 
