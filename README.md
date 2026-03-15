@@ -36,7 +36,7 @@ Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. Thi
 
 ### Adding Products
 
-| Add new product group | Add URL to existing group |
+| Add new retailer and product group | Add new retailer to existing product group |
 |---|---|
 | ![New product group](screenshots/add-new-product.png) | ![Add URL to existing product group](screenshots/add-to-existing-product.png) |
 
