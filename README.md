@@ -6,17 +6,13 @@
 [![Test Report](https://img.shields.io/badge/Test%20Report-GitHub%20Pages-blue)](https://ancodia.github.io/synth-price-monitor/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Multi-site price monitoring system that tracks synthesizer prices across UK retailers, with intelligent alerting via Slack and email when prices drop or products come back in stock.
+Retailers don't tell you when prices drop. This system watches them for you — tracking UK synthesizer prices across multiple sites and alerting you the moment a deal appears, with the engineering to run reliably without babysitting.
 
-**This isn't a tutorial scraper.** It's a production-grade data pipeline that uses web scraping as the extraction mechanism — the engineering patterns are the point.
-
-> 📹 **[Watch the 3-minute walkthrough →](#)** <!-- TODO: Replace with Loom link -->
+Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. This project demonstrates what separates a script from a production system.
 
 ---
 
-## What Makes This Different
-
-Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. This project demonstrates the engineering that separates a script from a system:
+## Engineering Decisions Worth Noting
 
 **Resilience** — Circuit breaker pattern automatically skips failing sites for 1 hour after 3 consecutive failures. Exponential backoff retries (3 attempts) handle transient issues. Single product failures don't crash the pipeline.
 
@@ -26,9 +22,9 @@ Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. Thi
 
 **Observability** — Structured logging with product_id, site, and timing on every scrape. Dual output: stdout for CI, rotating file logs with 30-day retention for debugging.
 
-**Extensibility** — Site registry pattern means adding a new retailer is one class and one dict entry. Zero pipeline changes.
+**Built to be extended** — Adding a new retailer takes one class and one dict entry. No changes needed to the pipeline, database, dashboard, or alert logic.
 
-**Verified correctness** — Three-layer test suite: pure unit tests, integration tests with mock Slack/SMTP servers, and Playwright UI tests against a live Streamlit instance. Three separate CI jobs publish results to GitHub Pages.
+**Verified correctness** — Three-layer test suite: pure unit tests, integration tests with mock Slack/SMTP servers, and Playwright UI tests against a live Streamlit instance. Results published to GitHub Pages on every push.
 
 ---
 
@@ -89,7 +85,7 @@ graph TB
     style J fill:#FFD700,color:#000000
 ```
 
-The pipeline flow for each product: **scrape → validate → compare → alert → store**. Each step is isolated — a failure at any point is caught, logged, and doesn't propagate.
+Pipeline flow per product: **scrape → validate → compare → alert → store**. Each step is isolated — a failure at any point is caught, logged, and doesn't propagate.
 
 ---
 
@@ -135,11 +131,11 @@ docker-compose --profile manual run --rm scraper
 
 The dashboard uses manual naming with autocomplete for reliable product grouping. Paste a URL, select an existing product name or create a new one, and the system handles the rest. Products with the same name are automatically grouped for cross-site comparison.
 
-This is a deliberate design choice — automatic name normalization was tested but proved unreliable across diverse retailer naming conventions. Manual naming with autocomplete is more reliable, more flexible (group any products you want), and transparent.
+This is a deliberate design choice — automatic name normalization was tested but proved unreliable across diverse retailer naming conventions. Manual naming with autocomplete is more reliable, more flexible, and transparent.
 
 ### Alert pipeline
 
-When the scraper runs (daily via GitHub Actions or on-demand), each product goes through the full pipeline. The alert decision logic checks whether a price drop exceeds the configured threshold, whether a product came back in stock, and whether the 24-hour cooldown has elapsed. If all conditions are met, notifications are sent to both Slack and email (both optional — missing credentials skip gracefully rather than crashing).
+When the scraper runs (daily via GitHub Actions or on-demand), each product goes through the full pipeline. The alert decision logic checks whether a price drop exceeds the configured threshold, whether a product came back in stock, and whether the 24-hour cooldown has elapsed. If all conditions are met, notifications go to Slack and email — both optional, missing credentials skip gracefully rather than crashing.
 
 ### Resilience patterns
 
@@ -147,51 +143,30 @@ The circuit breaker tracks consecutive failures per site. After 3 failures, the 
 
 Idempotency protection in the database layer prevents duplicate snapshots when price and stock haven't changed between scrapes. This keeps the database clean and charts meaningful.
 
-### Adding a new retailer
-
-Create a scraper class inheriting from `SiteScraper`, implement 3 extraction methods and a cookie handler, and register it:
-
-```python
-# src/scrapers/registry.py
-SITE_REGISTRY["newsite.com"] = NewSiteScraper
-```
-
-No changes needed to the pipeline, database, dashboard, or alert logic.
-
 ---
 
 ## Testing
 
-Three-layer test suite, each with a separate CI job.
+Three-layer test suite with a separate CI job for each layer. Results publish to [GitHub Pages](https://ancodia.github.io/synth-price-monitor/) on every push to main.
 
-### Unit tests (~1 min, no browser, no network)
-
-Pure function tests for price parsing, database idempotency, circuit breaker state machine, and alert decision logic (`should_alert()`). No fixtures, no database, no mock servers.
+**Unit tests** (~1 min, no browser, no network) — pure function tests for price parsing, database idempotency, circuit breaker state machine, and alert decision logic. No fixtures, no database, no mock servers.
 
 ```bash
 uv run pytest tests/unit/ -v
 ```
 
-### Integration tests (~1 min, mock Slack/SMTP)
-
-Mock Slack webhook and SMTP servers capture real HTTP/SMTP traffic. Tests verify the full notification flow: payload formatting, content validation, and the end-to-end path from `should_alert()` to delivered message.
+**Integration tests** (~1 min, mock Slack/SMTP) — mock servers capture real HTTP/SMTP traffic. Tests verify the full notification flow: payload formatting, content validation, and the end-to-end path from `should_alert()` to delivered message.
 
 ```bash
 uv run pytest tests/integration/ -v
 ```
 
-### E2E tests (~2 min, Playwright)
-
-Playwright drives a live Streamlit instance seeded with 14 days of price history across 3 retailers plus a Thomann price drop. Tests verify product grouping, comparison table rendering, chart traces, alert controls, and the best deals section.
+**E2E tests** (~2 min, Playwright) — drives a live Streamlit instance seeded with 14 days of price history across 3 retailers plus a Thomann price drop. Tests verify product grouping, comparison table rendering, chart traces, alert controls, and the best deals section.
 
 ```bash
 uv run playwright install --with-deps chromium
 uv run pytest tests/e2e/ -v --timeout=120
 ```
-
-### CI
-
-All three suites run on every push and PR to `main` as separate jobs. Results are published as GitHub Checks. The HTML test report (with embedded screenshots) deploys to [GitHub Pages](https://ancodia.github.io/synth-price-monitor/) on main branch pushes. Playwright traces upload as artifacts on failure.
 
 ---
 
@@ -220,62 +195,13 @@ Both notification channels are optional. Missing credentials produce a log warni
 
 ## Design Decisions
 
-### SQLite + Git scraping pattern
+**SQLite + Git scraping pattern** — Price history is stored in SQLite and committed via GitHub Actions. Zero infrastructure cost, easy inspection via Git history, built-in backup. Not suitable for >1,000 products or sub-hourly scraping — production alternative would be PostgreSQL or DynamoDB. This pattern is intentional for the use case.
 
-Price history stored in SQLite and committed via GitHub Actions. Zero infrastructure cost, easy inspection via Git history, built-in backup. Not suitable for >1,000 products or sub-hourly scraping — production alternative would be PostgreSQL or DynamoDB. This pattern is intentional for the use case.
+**Soft delete** — Products are marked inactive rather than removed. Re-adding the same URL reactivates the product with all historical snapshots intact. Prevents UNIQUE constraint issues and enables undo.
 
-### Soft delete
-
-Products are marked inactive rather than removed. Re-adding the same URL reactivates the product with all historical snapshots intact. Prevents UNIQUE constraint issues and enables undo.
-
-### Combined vs individual charts
-
-Multi-site products get a single chart with all retailers overlaid for easy visual comparison. Single-site products get an individual chart with alert settings in a sidebar. The layout adapts automatically based on how many retailers are tracking the product.
+**Combined vs individual charts** — Multi-site products get a single chart with all retailers overlaid for easy visual comparison. Single-site products get an individual chart with alert settings in a sidebar. The layout adapts automatically based on how many retailers are tracking the product.
 
 ---
-
-## Project Structure
-
-```
-synth-price-monitor/
-├── src/
-│   ├── scrapers/
-│   │   ├── base.py             # Abstract scraper (template method pattern)
-│   │   ├── registry.py         # Site registry
-│   │   ├── thomann.py          # Thomann implementation
-│   │   ├── gear4music.py       # Gear4Music implementation
-│   │   └── juno.py             # Juno implementation
-│   ├── models.py               # Pydantic data models
-│   ├── database.py             # SQLite operations + idempotency
-│   ├── notifications.py        # Slack + Email (both optional)
-│   ├── pipeline.py             # Orchestration + alert logic
-│   ├── circuit_breaker.py      # Failure protection
-│   └── main.py                 # Entry point
-├── dashboard/
-│   ├── app.py                  # Streamlit dashboard
-│   └── scraper_sync.py         # Async bridge for Streamlit
-├── tests/
-│   ├── unit/
-│   │   ├── test_scrapers.py    # Price parsing, idempotency, circuit breaker
-│   │   └── test_should_alert.py # Alert decision logic (pure unit tests)
-│   ├── integration/
-│   │   ├── conftest.py         # Mock Slack + SMTP servers (ports 9200/9225)
-│   │   ├── mock_services.py    # MockSlackServer, MockSMTPServer
-│   │   ├── test_notifications.py # Slack + email payload validation
-│   │   └── test_alert_pipeline.py # Full decision → send → verify flow
-│   └── e2e/
-│       ├── conftest.py         # Session fixtures (db, Streamlit process)
-│       ├── seed_test_data.py   # 3-retailer scenario with price drop
-│       └── test_ui.py          # Playwright UI tests
-├── .github/workflows/
-│   ├── unit-tests.yml          # Fast CI (~1 min)
-│   ├── integration-tests.yml   # Mock server tests (~1 min)
-│   └── e2e-tests.yml           # Playwright CI + GitHub Pages report
-├── Dockerfile
-├── docker-compose.yml
-├── pyproject.toml
-└── uv.lock
-```
 
 ## Tech Stack
 
@@ -283,14 +209,11 @@ Python 3.11, Playwright (with stealth), Pydantic v2, SQLite, Streamlit, Plotly, 
 
 ---
 
-## Roadmap
+## What This Could Grow Into
 
-- Used/B-stock tracking
-- FastAPI endpoint for external integrations
-- Multi-currency support (EUR, USD conversion)
-- Telegram bot notifications
-- Price prediction with historical trend analysis
-- CSV export
+The foundation is deliberately extensible. Near-term additions that would take hours rather than weeks: used/B-stock tracking, FastAPI endpoint for external integrations, multi-currency support (EUR/USD), Telegram bot notifications, and price prediction from historical trends.
+
+---
 
 ## License
 
