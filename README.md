@@ -40,7 +40,7 @@ Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. Thi
 |---|---|
 | ![New product group](screenshots/add-new-product.png) | ![Add URL to existing product group](screenshots/add-to-existing-product.png) |
 
-
+Products from different retailers are grouped under a shared custom name for comparison. The left screenshot shows adding a new product group; the right shows adding a second retailer to an existing one.
 
 ### Multi-site product comparison
 
