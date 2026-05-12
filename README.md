@@ -8,8 +8,6 @@
 
 Retailers don't tell you when prices drop. This system watches them for you — tracking UK synthesizer prices across multiple sites and alerting you the moment a deal appears, with the engineering to run reliably without babysitting.
 
-Most portfolio scrapers fetch a page, parse some HTML, and dump it to a CSV. This project demonstrates what separates a script from a production system.
-
 ---
 
 ## Engineering Decisions Worth Noting
